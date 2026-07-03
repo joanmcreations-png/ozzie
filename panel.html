@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ozzie — Panel</title>
+<link rel="icon" type="image/svg+xml" href="ozzie-logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#0b0a08; --card:#16150f; --card2:#1b1a13; --line:#28261c;
+    --green:#3ecf7e; --text:#f3f1ea; --dim:#a39d8c; --dim2:#726c5c;
+    --serif:'Fraunces', Georgia, serif; --sans:'Inter', -apple-system, sans-serif;
+  }
+  body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; }
+  a { color:inherit; }
+  .brand { font-family:var(--serif); font-size:22px; font-weight:600; }
+  .brand .dot { color:var(--green); }
+
+  /* login */
+  #login { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  #login form { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:36px; width:320px; text-align:center; }
+  #login input { width:100%; margin-top:20px; padding:12px 14px; border-radius:8px; border:1px solid var(--line); background:var(--card2); color:var(--text); font-size:15px; }
+  #login button { width:100%; margin-top:14px; padding:12px; border:none; border-radius:8px; background:var(--green); color:#062112; font-weight:700; font-size:15px; cursor:pointer; }
+  #login .err { color:#e8776a; font-size:13px; margin-top:10px; min-height:16px; }
+
+  /* app */
+  #app { display:none; height:100vh; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--line); }
+  .layout { display:flex; height:calc(100vh - 57px); }
+  #list { width:320px; border-right:1px solid var(--line); overflow-y:auto; flex-shrink:0; }
+  .conv { padding:14px 18px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .conv:hover { background:var(--card); }
+  .conv.active { background:var(--card2); }
+  .conv .who { font-weight:600; font-size:14px; }
+  .conv .biz { color:var(--dim2); font-size:12px; margin-top:2px; }
+  .conv .off { color:#e8a23a; font-size:11px; margin-top:4px; }
+  #thread { flex:1; display:flex; flex-direction:column; }
+  #thread-head { padding:14px 24px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  #msgs { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:60%; padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.4; }
+  .msg.user { align-self:flex-start; background:var(--card); border-bottom-left-radius:4px; }
+  .msg.assistant { align-self:flex-end; background:var(--green); color:#062112; border-bottom-right-radius:4px; }
+  .empty { color:var(--dim2); text-align:center; margin-top:80px; }
+  .toggle { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--dim); }
+  .toggle input { width:36px; height:20px; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form onsubmit="return doLogin(event)">
+    <div class="brand">ozzie<span class="dot">.</span></div>
+    <div style="color:var(--dim);font-size:13px;margin-top:6px;">Client panel</div>
+    <input id="tokenInput" type="password" placeholder="Access token" autofocus>
+    <button type="submit">Enter</button>
+    <div class="err" id="loginErr"></div>
+  </form>
+</div>
+
+<div id="app">
+  <header>
+    <div class="brand">ozzie<span class="dot">.</span> <span style="font-family:var(--sans);font-size:13px;color:var(--dim2);font-weight:400;">panel</span></div>
+    <div style="color:var(--dim2);font-size:13px;" id="refreshedAt"></div>
+  </header>
+  <div class="layout">
+    <div id="list"></div>
+    <div id="thread">
+      <div id="thread-head" style="display:none;">
+        <div>
+          <div id="threadWho" style="font-weight:600;"></div>
+          <div id="threadBiz" style="color:var(--dim2);font-size:12px;"></div>
+        </div>
+        <label class="toggle">
+          Bot on <input type="checkbox" id="botToggle" onchange="toggleBot()">
+        </label>
+      </div>
+      <div id="msgs"><div class="empty">Select a conversation</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let TOKEN = localStorage.getItem('ozzie_panel_token') || '';
+let currentId = null;
+let conversations = [];
+
+async function doLogin(e) {
+  e.preventDefault();
+  const val = document.getElementById('tokenInput').value.trim();
+  const r = await fetch('/api/panel/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: val }) });
+  const j = await r.json();
+  if (j.ok) {
+    TOKEN = val;
+    localStorage.setItem('ozzie_panel_token', TOKEN);
+    enterApp();
+  } else {
+    document.getElementById('loginErr').textContent = 'Wrong token';
+  }
+  return false;
+}
+
+function enterApp() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadConversations();
+  setInterval(loadConversations, 15000);
+}
+
+async function loadConversations() {
+  const r = await fetch('/api/panel/conversations?token=' + encodeURIComponent(TOKEN));
+  if (r.status === 401) { localStorage.removeItem('ozzie_panel_token'); location.reload(); return; }
+  conversations = await r.json();
+  renderList();
+  document.getElementById('refreshedAt').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function renderList() {
+  const list = document.getElementById('list');
+  if (!conversations.length) { list.innerHTML = '<div class="empty">No conversations yet</div>'; return; }
+  list.innerHTML = conversations.map(c => `
+    <div class="conv ${c.id === currentId ? 'active' : ''}" onclick="openConv('${c.id}')">
+      <div class="who">${c.customer_name || c.customer_phone}</div>
+      <div class="biz">${c.business?.name || ''} · ${c.customer_phone}</div>
+      ${c.bot_enabled === false ? '<div class="off">Bot paused — you have control</div>' : ''}
+    </div>
+  `).join('');
+}
+
+async function openConv(id) {
+  currentId = id;
+  renderList();
+  const c = conversations.find(x => x.id === id);
+  document.getElementById('thread-head').style.display = 'flex';
+  document.getElementById('threadWho').textContent = c.customer_name || c.customer_phone;
+  document.getElementById('threadBiz').textContent = (c.business?.name || '') + ' · ' + c.customer_phone;
+  document.getElementById('botToggle').checked = c.bot_enabled !== false;
+
+  const r = await fetch('/api/panel/messages?conversation_id=' + id + '&token=' + encodeURIComponent(TOKEN));
+  const msgs = await r.json();
+  document.getElementById('msgs').innerHTML = msgs.map(m => `<div class="msg ${m.role}">${escapeHtml(m.content)}</div>`).join('') || '<div class="empty">No messages yet</div>';
+}
+
+async function toggleBot() {
+  const enabled = document.getElementById('botToggle').checked;
+  await fetch('/api/panel/toggle?token=' + encodeURIComponent(TOKEN), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ conversation_id: currentId, bot_enabled: enabled })
+  });
+  loadConversations();
+}
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+if (TOKEN) enterApp();
+</script>
+</body>
+</html>

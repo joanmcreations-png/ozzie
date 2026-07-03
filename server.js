@@ -28,6 +28,65 @@ const WA_VERIFY    = process.env.WHATSAPP_VERIFY_TOKEN || 'ozzie-verify';
 const WA_BUSINESS  = process.env.WHATSAPP_BUSINESS || 'barber'; // which BIZ_FACTS entry this WhatsApp number represents
 const waHistory = new Map(); // phone -> [{role, content}]
 
+// Supabase (conversation history + client panel)
+const SB_URL          = process.env.SUPABASE_URL || '';
+const SB_SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const PANEL_TOKEN     = process.env.PANEL_TOKEN || 'ozzie-panel';
+
+function sbFetch(pathAndQuery, { method = 'GET', body, prefer } = {}) {
+  return new Promise((resolve, reject) => {
+    if (!SB_URL || !SB_SERVICE_KEY) return reject(new Error('Supabase not configured'));
+    const data = body ? JSON.stringify(body) : null;
+    const headers = {
+      apikey: SB_SERVICE_KEY,
+      Authorization: `Bearer ${SB_SERVICE_KEY}`,
+      'Content-Type': 'application/json'
+    };
+    if (prefer) headers.Prefer = prefer;
+    const req = https.request(`${SB_URL}/rest/v1/${pathAndQuery}`, { method, headers }, res => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(raw ? JSON.parse(raw) : null);
+        } else {
+          reject(new Error(`Supabase ${method} ${pathAndQuery} failed: ${res.statusCode} ${raw}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+async function getOrCreateConversation(businessSlug, phone) {
+  const businesses = await sbFetch(`businesses?slug=eq.${encodeURIComponent(businessSlug)}&select=id,bot_enabled,facts,name`);
+  const business = businesses && businesses[0];
+  if (!business) return null;
+
+  const existing = await sbFetch(`conversations?business_id=eq.${business.id}&customer_phone=eq.${encodeURIComponent(phone)}&select=id,bot_enabled`);
+  if (existing && existing[0]) return { business, conversation: existing[0] };
+
+  const created = await sbFetch('conversations', {
+    method: 'POST',
+    body: { business_id: business.id, customer_phone: phone },
+    prefer: 'return=representation'
+  });
+  return { business, conversation: created[0] };
+}
+
+function logMessage(conversationId, role, content) {
+  return sbFetch('messages', { method: 'POST', body: { conversation_id: conversationId, role, content } }).catch(e => console.error('log message error:', e.message));
+}
+
+function saveBooking(conversationId, businessId, service, whenText, customerName) {
+  return sbFetch('bookings', {
+    method: 'POST',
+    body: { conversation_id: conversationId, business_id: businessId, service, when_text: whenText, customer_name: customerName }
+  }).catch(e => console.error('save booking error:', e.message));
+}
+
 const BIZ_FACTS = {
   barber: `Negocio: North Van Barbers (barbería en 123 Lonsdale Ave, North Vancouver).
 Horario: lunes a sábado 9:00-19:00, domingos cerrado.
@@ -97,6 +156,18 @@ async function handleIncomingWhatsApp(from, text) {
   const history = waHistory.get(from) || [];
   history.push({ role: 'user', content: text });
   const clean = history.slice(-14);
+
+  let ctx = null;
+  try {
+    ctx = await getOrCreateConversation(WA_BUSINESS, from);
+  } catch (e) {
+    console.error('Supabase lookup error:', e.message);
+  }
+  if (ctx) logMessage(ctx.conversation.id, 'user', text);
+
+  const botOff = ctx && (ctx.business.bot_enabled === false || ctx.conversation.bot_enabled === false);
+  if (botOff) return; // human has taken over this chat, or bot paused for this business
+
   try {
     const r = await callAnthropic({
       model: MODEL,
@@ -105,9 +176,14 @@ async function handleIncomingWhatsApp(from, text) {
       messages: clean
     });
     let reply = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const booking = reply.match(/BOOKING_CONFIRMED\|([^|]*)\|([^|]*)\|([^\n]*)/);
     reply = reply.replace(/BOOKING_CONFIRMED\|[^\n]*/g, '').trim();
     history.push({ role: 'assistant', content: reply });
     waHistory.set(from, history);
+    if (ctx) {
+      logMessage(ctx.conversation.id, 'assistant', reply);
+      if (booking) saveBooking(ctx.conversation.id, ctx.business.id, booking[1].trim(), booking[2].trim(), booking[3].trim());
+    }
     await sendWhatsAppMessage(from, reply);
   } catch (e) {
     console.error('WhatsApp handling error:', e.message);
@@ -212,6 +288,60 @@ const server = http.createServer(async (req, res) => {
       }
     });
     return;
+  }
+
+  // Client panel API — protected by a shared token (?token=...)
+  if (pathname.startsWith('/api/panel/')) {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    res.setHeader('Content-Type', 'application/json');
+
+    if (pathname === '/api/panel/login' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', () => {
+        try {
+          const { token } = JSON.parse(body);
+          res.end(JSON.stringify({ ok: token === PANEL_TOKEN }));
+        } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+      });
+      return;
+    }
+
+    if (url.searchParams.get('token') !== PANEL_TOKEN) {
+      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' })); return;
+    }
+
+    if (pathname === '/api/panel/conversations' && req.method === 'GET') {
+      try {
+        const rows = await sbFetch('conversations?select=id,customer_phone,customer_name,bot_enabled,updated_at,business:businesses(name,slug)&order=updated_at.desc');
+        res.end(JSON.stringify(rows));
+      } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+      return;
+    }
+
+    if (pathname === '/api/panel/messages' && req.method === 'GET') {
+      try {
+        const cid = url.searchParams.get('conversation_id');
+        const rows = await sbFetch(`messages?conversation_id=eq.${encodeURIComponent(cid)}&select=role,content,created_at&order=created_at.asc`);
+        res.end(JSON.stringify(rows));
+      } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+      return;
+    }
+
+    if (pathname === '/api/panel/toggle' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', async () => {
+        try {
+          const { conversation_id, bot_enabled } = JSON.parse(body);
+          await sbFetch(`conversations?id=eq.${encodeURIComponent(conversation_id)}`, { method: 'PATCH', body: { bot_enabled } });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+      });
+      return;
+    }
+
+    res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return;
   }
 
   // Static — '/' es la landing pública; la demo vive en index.html (embebida en iframe)
