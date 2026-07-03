@@ -26,8 +26,9 @@
     position:relative;
   }
   body::before {
-    content:''; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.045; mix-blend-mode:overlay;
+    content:''; position:fixed; top:-6%; left:-6%; width:112%; height:112%; pointer-events:none; z-index:1; opacity:.045; mix-blend-mode:overlay;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation:grainShift 1s steps(6) infinite;
   }
   a { color:inherit; text-decoration:none; }
   .wrap { max-width:1080px; margin:0 auto; padding:0 24px; position:relative; z-index:2; }
@@ -47,7 +48,12 @@
   .btn.small { padding:10px 20px; font-size:13.5px; }
 
   /* ── hero ── */
-  .hero { padding:64px 0 44px; text-align:center; max-width:640px; margin:0 auto; }
+  .hero { position:relative; padding:64px 0 44px; text-align:center; max-width:640px; margin:0 auto; }
+  .hero::before {
+    content:''; position:absolute; top:-40px; left:50%; width:480px; height:480px;
+    background:radial-gradient(circle, rgba(62,207,126,.18), transparent 68%); filter:blur(50px);
+    pointer-events:none; animation:breathe 6s ease-in-out infinite;
+  }
   .hero h1 { font-family:var(--serif); font-size:clamp(34px, 6vw, 54px); font-weight:600; letter-spacing:-0.02em; line-height:1.08; }
   .hero h1 em { font-style:italic; font-weight:500; color:var(--green); }
   .hero p { max-width:440px; margin:20px auto 32px; color:var(--dim); font-size:17px; }
@@ -58,6 +64,7 @@
   .chat-card {
     background:#0f0e0a; border:1px solid var(--line); border-radius:24px; padding:14px;
     box-shadow:0 30px 80px rgba(0,0,0,.55); text-align:left;
+    animation:float 5s ease-in-out infinite; animation-delay:1.1s;
   }
   .chat-top { display:flex; align-items:center; gap:10px; padding:4px 6px 12px; border-bottom:1px solid var(--line-soft); }
   .chat-av { width:40px; height:40px; border-radius:50%; background:#128C7E; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
@@ -143,6 +150,59 @@
     .float-tag { display:none; }
     .compare { grid-template-columns:1fr; }
   }
+
+  /* ── animations ── */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  @keyframes pulseDot { 0%,100% { box-shadow:0 0 0 0 rgba(62,207,126,.55); } 70% { box-shadow:0 0 0 6px rgba(62,207,126,0); } }
+  @keyframes countGlow { 0% { opacity:0; transform:translateY(6px); } 100% { opacity:1; transform:translateY(0); } }
+  @keyframes breathe { 0%,100% { opacity:.55; transform:translateX(-50%) scale(1); } 50% { opacity:.9; transform:translateX(-50%) scale(1.1); } }
+  @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+  @keyframes grainShift {
+    0%,100% { transform:translate(0,0); } 10% { transform:translate(-2%,-3%); } 20% { transform:translate(-4%,2%); }
+    30% { transform:translate(2%,-4%); } 40% { transform:translate(-2%,4%); } 50% { transform:translate(-4%,2%); }
+    60% { transform:translate(3%,0); } 70% { transform:translate(0,3%); } 80% { transform:translate(-3%,0); } 90% { transform:translate(2%,2%); }
+  }
+
+  .hero h1, .hero p, .hero .cta-row, .hero-visual, .hero .stat-row {
+    opacity:0; animation:fadeUp .7s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .hero h1 { animation-delay:.05s; }
+  .hero p { animation-delay:.16s; }
+  .hero .cta-row { animation-delay:.27s; }
+  .hero-visual { animation-delay:.4s; }
+  .hero .stat-row { animation-delay:.7s; }
+
+  .chat-body .cb { opacity:0; animation:popIn .5s cubic-bezier(.2,.7,.3,1) forwards; }
+  .chat-body .cb:nth-child(1) { animation-delay:.75s; }
+  .chat-body .cb:nth-child(2) { animation-delay:1.15s; }
+  .chat-body .cb:nth-child(3) { animation-delay:1.55s; }
+  .chat-body .cb:nth-child(4) { animation-delay:1.95s; }
+  .chat-time { opacity:0; animation:fadeUp .5s ease forwards; animation-delay:2.3s; }
+
+  .chat-on::before {
+    content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green);
+    margin-right:5px; animation:pulseDot 1.8s infinite;
+  }
+
+  .reveal { opacity:0; transform:translateY(28px); transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
+  .reveal.is-visible { opacity:1; transform:translateY(0); }
+  .reveal-stagger .reveal:nth-child(1) { transition-delay:0s; }
+  .reveal-stagger .reveal:nth-child(2) { transition-delay:.08s; }
+  .reveal-stagger .reveal:nth-child(3) { transition-delay:.16s; }
+  .reveal-stagger .reveal:nth-child(4) { transition-delay:.24s; }
+  .reveal-stagger .reveal:nth-child(5) { transition-delay:.32s; }
+
+  .stat b[data-count] { display:inline-block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero h1, .hero p, .hero .cta-row, .hero-visual, .hero .stat-row, .chat-body .cb, .chat-time, .reveal,
+    .hero::before, .chat-card, .chat-on::before, body::before {
+      animation:none !important; transition:none !important; opacity:1 !important; transform:none !important;
+    }
+    .hero::before { opacity:.55 !important; }
+    body::before { opacity:.045 !important; }
+  }
 </style>
 </head>
 <body>
@@ -187,38 +247,38 @@
     </div>
 
     <div class="stat-row">
-      <div class="stat"><b>78%</b><span>buy from whoever replies first</span></div>
-      <div class="stat"><b>&lt;10s</b><span>average reply time</span></div>
-      <div class="stat"><b>35%</b><span>of bookings after hours</span></div>
+      <div class="stat"><b data-count="78" data-suffix="%">0%</b><span>buy from whoever replies first</span></div>
+      <div class="stat"><b data-count="10" data-prefix="&lt;" data-suffix="s">&lt;0s</b><span>average reply time</span></div>
+      <div class="stat"><b data-count="35" data-suffix="%">0%</b><span>of bookings after hours</span></div>
     </div>
   </div>
 </div>
 
 <section id="demo">
-  <div class="wrap center">
+  <div class="wrap center reveal">
     <div class="label">Live demo</div>
     <h2>Don't take our word for it. <em>Text it.</em></h2>
     <p class="lead mx">Pick a business below and type like a real customer would. Ask about prices, try to book something, switch to Spanish — go ahead, try to break it.</p>
   </div>
-  <div class="demo-box"><iframe src="index.html" title="Live demo"></iframe></div>
+  <div class="demo-box reveal"><iframe src="index.html" title="Live demo"></iframe></div>
 </section>
 
 <section>
   <div class="wrap">
-    <div class="label">How it works</div>
-    <h2>Live in 24 hours. <em>You do almost nothing.</em></h2>
-    <div class="grid3">
-      <div class="card">
+    <div class="label reveal">How it works</div>
+    <h2 class="reveal">Live in 24 hours. <em>You do almost nothing.</em></h2>
+    <div class="grid3 reveal-stagger">
+      <div class="card reveal">
         <div class="num">01</div>
         <h3>Tell us about your business</h3>
         <p>A 5-minute form: hours, services, prices, and how you like to talk to customers. That's the whole job on your side.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <div class="num">02</div>
         <h3>We connect your WhatsApp</h3>
         <p>Linked to your existing business number through WhatsApp's official API. Guided step by step, in writing — about 15 minutes.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <div class="num">03</div>
         <h3>It answers. You get bookings.</h3>
         <p>Every message answered in seconds, every booking sent straight to you. Jump into any chat yourself whenever you want.</p>
@@ -229,10 +289,10 @@
 
 <section>
   <div class="wrap">
-    <div class="label">Why not just hire someone</div>
-    <h2>A front desk person costs <em>$3,400/mo.</em><br>Ozzie costs $129.</h2>
-    <div class="compare">
-      <div class="col no">
+    <div class="label reveal">Why not just hire someone</div>
+    <h2 class="reveal">A front desk person costs <em>$3,400/mo.</em><br>Ozzie costs $129.</h2>
+    <div class="compare reveal-stagger">
+      <div class="col no reveal">
         <h4>A part-time hire</h4>
         <ul>
           <li>Works one shift, not 24/7</li>
@@ -241,7 +301,7 @@
           <li>$20-25/hr + payroll tax</li>
         </ul>
       </div>
-      <div class="col yes">
+      <div class="col yes reveal">
         <h4>Ozzie</h4>
         <ul>
           <li>Answers nights, weekends, holidays</li>
@@ -256,10 +316,10 @@
 
 <section>
   <div class="wrap center">
-    <div class="label">Pricing</div>
-    <h2>Less than one missed<br><em>customer</em> a month.</h2>
-    <div class="founding-banner">🔥 Founding offer — first 10 shops lock in $129/mo for life</div>
-    <div class="price-box">
+    <div class="label reveal">Pricing</div>
+    <h2 class="reveal">Less than one missed<br><em>customer</em> a month.</h2>
+    <div class="founding-banner reveal">🔥 Founding offer — first 10 shops lock in $129/mo for life</div>
+    <div class="price-box reveal">
       <div class="price"><span class="strike">$149</span>$129<small>/month</small></div>
       <div class="trial">First 14 days free</div>
       <ul>
@@ -277,8 +337,8 @@
 
 <section>
   <div class="wrap">
-    <div class="center"><div class="label">Questions</div><h2>Fair questions, <em>straight answers.</em></h2></div>
-    <div class="faq">
+    <div class="center reveal"><div class="label">Questions</div><h2>Fair questions, <em>straight answers.</em></h2></div>
+    <div class="faq reveal">
       <details>
         <summary>Will my customers notice it's automated?</summary>
         <p>That's the whole point — they won't. Short, natural messages in your tone, knows your prices and hours, books like your best front-desk person on their best day. Try the demo above and judge for yourself.</p>
@@ -303,7 +363,7 @@
   </div>
 </section>
 
-<div class="final wrap">
+<div class="final wrap reveal">
   <h2>Every message you don't answer<br>is a customer <em>someone else got.</em></h2>
   <p class="lead mx" style="margin:16px auto 34px;">Try it free for 14 days. If it doesn't win you bookings, cancel with one message.</p>
   <a class="btn" href="https://buy.stripe.com/test_3cIcMY6EEguU2OobrXafS00">Start free trial</a>
@@ -313,6 +373,50 @@
   <span class="fbrand">ozzie<span style="color:var(--green);font-style:normal">.</span></span>
   <span>Vancouver, BC · hello@hiozzie.com</span>
 </footer>
+
+<script>
+  var revealEls = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  } else {
+    revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+  }
+
+  var counters = document.querySelectorAll('[data-count]');
+  function animateCount(el) {
+    var target = parseFloat(el.getAttribute('data-count'));
+    var prefix = el.getAttribute('data-prefix') || '';
+    var suffix = el.getAttribute('data-suffix') || '';
+    var dur = 1100, start = null;
+    function step(ts) {
+      if (!start) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = prefix + Math.round(target * eased) + suffix;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if ('IntersectionObserver' in window) {
+    var cIo = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          animateCount(entry.target);
+          cIo.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.6 });
+    counters.forEach(function (el) { cIo.observe(el); });
+  }
+</script>
 
 </body>
 </html>

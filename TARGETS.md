@@ -6,21 +6,32 @@
 - Dentistas, fisios, clínicas estéticas, tatuadores, restaurantes: miles en total
 - Con capturar el 0,5% del mercado local a $99 ya son varios miles/mes recurrentes
 
-## TANDA 1 — Barberías North Vancouver (10 objetivos reales)
-Prioridad a las que NO tengan botón "book online" (esas sufren los DMs):
+## TANDA 1 — Barberías North Vancouver (10 objetivos, investigados 2026-07-03)
 
-| # | Negocio | Dónde | Nota |
-|---|---------|-------|------|
-| 1 | Guido's Barbershop | 1725 Lonsdale Ave | Top rated local |
-| 2 | Save On Cuts by Mary & Ali | 1538 Lonsdale Ave | Familiar, horario largo |
-| 3 | New York Barbershop | North Van (newyorkbarbershop.ca) | Tiene web propia |
-| 4 | Gentleman Jacks Barbershop | North Van | Top rated |
-| 5 | Lonsdale Men's Hair Styling | Lonsdale | Clásica |
-| 6 | Capilano Barbers & Mens Hairstyling | North Van | |
-| 7 | The Village Barber | North Van | |
-| 8 | Man Up Grooming | North Van | |
-| 9 | Lynn Valley Barbershop | 1199 Lynn Valley Rd | |
-| 10 | (rellenar con Google Maps: "barber north vancouver", filtrar sin book online) | | |
+**Prioridad — Objetivo A, sin sistema de reservas, CON email (mandar primero):**
+
+| # | Negocio | Email | Detalle para el email |
+|---|---------|-------|------------------------|
+| 1 | Guido's Barbershop (1725 Lonsdale Ave) | ddargalaii@gmail.com | En el mismo local de Lonsdale desde 1967 |
+| 8 | Man Up Grooming (3-180 Esplanade West) | bookings@manupgrooming.com | Alison lo fundó en 2013 para abrir en el North Shore donde creció; se acaban de mudar a un local más grande en Esplanade |
+
+**Objetivo A, sin reservas online, pero SIN email/Instagram (solo llamar o pasar por la tienda):**
+
+| # | Negocio | Contacto | Nota |
+|---|---------|----------|------|
+| 2 | Save On Cuts by Mary & Ali (1538 Lonsdale Ave) | Tel. (604) 990-9393 | Sin web ni redes, horario largo 7 días |
+| 5 | Lonsdale Men's Hair Styling (146 Lonsdale Ave) | Tel. (604) 985-9616 | Clientes desde 2013, barberos Adeel y Fiko |
+| 6 | Capilano Barbers (3107 Edgemont Blvd) | Tel. 604-986-3914 | Familiar desde 1960, solo cash, sin cita |
+
+**Objetivo B — ya tienen reservas online (Fresha/Square/Setmore/Vagaro), guardar para v2 con integración:**
+
+| # | Negocio | Instagram/Facebook | Sistema que usan |
+|---|---------|---------------------|-------------------|
+| 3 | New York Barbershop (976 Marine Dr + 1525 Lonsdale) | @new.york.barbershop | Setmore |
+| 4 | Gentleman Jacks (104-3246 Connaught Cres, Edgemont) | @gentleman.jacks.barbershop | Squire + Fresha |
+| 7 | The Village Barber (163-1233 Lynn Valley Rd) | @thevillagebarbernorthvan | Fresha |
+| 9 | Lynn Valley Barbershop (Suite 129D, 1199 Lynn Valley Rd) | facebook.com/LynnValleyBarbershop | Square + Fresha |
+| 10 | Industry Grooming (1083 Marine Drive) | @industrygroomingvan · 236-481-0944 | Vagaro |
 
 DESCARTAR: Tommy Gun's (cadena corporativa, no decide el local).
 
