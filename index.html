@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Frankie — Live Demo</title>
+<title>Ozzie — Live Demo</title>
+<link rel="icon" type="image/svg+xml" href="ozzie-logo.svg?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -124,14 +125,14 @@
 <body>
 
 <div class="top">
-  <h1>Frankie <em>— Demo</em></h1>
+  <h1>Ozzie <em>— Demo</em></h1>
   <div class="badge demo" id="badge">DEMO MODE</div>
 </div>
 
 <div class="controls">
-  <button class="chip on" data-biz="barber">💈 Barbería</button>
-  <button class="chip" data-biz="resto">🍽️ Restaurante</button>
-  <button class="chip" data-biz="dental">🦷 Clínica dental</button>
+  <button class="chip on" data-biz="barber">💈 <span class="blabel">Barbershop</span></button>
+  <button class="chip" data-biz="resto">🍽️ <span class="blabel">Restaurant</span></button>
+  <button class="chip" data-biz="dental">🦷 <span class="blabel">Dental clinic</span></button>
   <div class="lang">
     <button class="chip" data-lang="es">ES</button>
     <button class="chip on" data-lang="en">EN</button>
@@ -150,15 +151,15 @@
     <div class="msgs" id="msgs"></div>
     <div class="quick" id="quick"></div>
     <div class="inputbar">
-      <input id="input" type="text" placeholder="Escribe como si fueras el cliente…" autocomplete="off">
+      <input id="input" type="text" placeholder="Type as if you were the customer…" autocomplete="off">
       <button class="send" id="send">➤</button>
     </div>
   </div>
 </div>
 
-<div class="foot">
-  El negocio no toca nada: la IA responde sola, 24/7, en cualquier idioma.<br>
-  <b>Escribe lo que escribiría un cliente real.</b>
+<div class="foot" id="foot">
+  The business does nothing: the AI replies on its own, 24/7, in any language.<br>
+  <b>Type what a real customer would write.</b>
 </div>
 
 <script>
@@ -225,7 +226,16 @@ const TXT = {
     hours:  { es:'Horario', en:'Hours' },
     prices: { es:'Precios', en:'Prices' }
   },
-  placeholder: { es:'Escribe como si fueras el cliente…', en:'Type as if you were the customer…' }
+  placeholder: { es:'Escribe como si fueras el cliente…', en:'Type as if you were the customer…' },
+  bizNames: {
+    barber: { es:'Barbería', en:'Barbershop' },
+    resto:  { es:'Restaurante', en:'Restaurant' },
+    dental: { es:'Clínica dental', en:'Dental clinic' }
+  },
+  foot: {
+    es:'El negocio no toca nada: la IA responde sola, 24/7, en cualquier idioma.<br><b>Escribe lo que escribiría un cliente real.</b>',
+    en:'The business does nothing: the AI replies on its own, 24/7, in any language.<br><b>Type what a real customer would write.</b>'
+  }
 };
 
 // ═══════════════ STATE ═══════════════
@@ -280,8 +290,17 @@ function renderQuick() {
      '<button class="qchip" data-q="book">'   + b.bookLabel[lang]      + '</button>'].join('');
 }
 
+function renderChrome() {
+  document.querySelectorAll('[data-biz]').forEach(el => {
+    const lbl = el.querySelector('.blabel');
+    if (lbl) lbl.textContent = TXT.bizNames[el.dataset.biz][lang];
+  });
+  document.getElementById('foot').innerHTML = TXT.foot[lang];
+}
+
 function resetChat() {
   flow = null; history = []; busy = false;
+  renderChrome();
   const b = BIZ[biz];
   document.getElementById('hAvatar').textContent = b.avatar;
   document.getElementById('hName').textContent = b.name;

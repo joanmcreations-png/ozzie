@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ozzie — Logo options</title>
+<link rel="icon" type="image/svg+xml" href="ozzie-logo.svg?v=3">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{ --green:#3ecf7e; --green2:#2fae67; --deep:#0f3d24; --amber:#e8a23a; }
+  body{ background:#0b0a08; color:#f3f1ea; font-family:'Inter',sans-serif; padding:40px 20px 80px; }
+  h1{ font-family:'Fraunces',serif; font-weight:600; text-align:center; font-size:30px; margin-bottom:6px; }
+  .sub{ text-align:center; color:#a39d8c; font-size:14px; margin-bottom:44px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:20px; max-width:1080px; margin:0 auto; }
+  .cell{ background:#16150f; border:1px solid #28261c; border-radius:20px; padding:30px 20px 22px; text-align:center; transition:border-color .2s; }
+  .cell:hover{ border-color:var(--green); }
+  .cell .art{ height:120px; display:flex; align-items:center; justify-content:center; }
+  .tag{ margin-top:18px; font-size:12px; color:#726c5c; letter-spacing:.06em; text-transform:uppercase; }
+  .name{ font-weight:700; font-size:15px; margin-top:4px; }
+  .lockup{ display:flex; align-items:center; gap:12px; justify-content:center; }
+  .word{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; letter-spacing:-0.02em; }
+  .word b{ color:var(--green); }
+  .row2{ max-width:1080px; margin:44px auto 0; }
+  .row2 h2{ font-family:'Fraunces',serif; font-weight:600; font-size:20px; margin-bottom:18px; text-align:center; color:#a39d8c; }
+  .lockrow{ display:flex; flex-wrap:wrap; gap:30px; justify-content:center; align-items:center; background:#111009; border:1px solid #201f17; border-radius:20px; padding:34px; }
+</style>
+</head>
+<body>
+
+<div style="max-width:780px;margin:0 auto 54px;background:#111009;border:1px solid #28261c;border-radius:26px;padding:46px 40px;text-align:center;">
+  <div style="font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#e8a23a;font-weight:700;margin-bottom:26px;">★ Logo final</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;">
+    <img src="ozzie-logo.svg?v=3" width="76" height="76" alt="ozzie">
+    <div style="font-family:'Fraunces',serif;font-size:56px;font-weight:600;letter-spacing:-0.02em;color:#f3f1ea;line-height:1;">ozzie<span style="color:#3ecf7e;">.</span></div>
+  </div>
+  <div style="margin-top:38px;display:flex;gap:24px;justify-content:center;align-items:stretch;flex-wrap:wrap;">
+    <div style="background:#fff;border-radius:16px;padding:20px 28px;display:flex;align-items:center;gap:14px;">
+      <img src="ozzie-logo.svg?v=3" width="42" height="42" alt="ozzie">
+      <span style="font-family:'Fraunces',serif;font-size:32px;font-weight:600;color:#141210;">ozzie<span style="color:#1c8a4e;">.</span></span>
+    </div>
+    <div style="width:74px;border-radius:18px;background:#0b0a08;border:1px solid #28261c;display:flex;align-items:center;justify-content:center;">
+      <img src="ozzie-logo.svg?v=3" width="48" height="48" alt="ozzie icon">
+    </div>
+    <div style="width:74px;border-radius:18px;background:linear-gradient(160deg,#1b1a13,#0b0a08);border:1px solid #28261c;display:flex;align-items:center;justify-content:center;">
+      <img src="ozzie-logo.svg?v=3" width="40" height="40" alt="favicon">
+    </div>
+  </div>
+  <div style="color:#726c5c;font-size:12.5px;margin-top:24px;">Sobre oscuro · sobre claro · icono de app / favicon — el mismo SVG escala perfecto.</div>
+</div>
+
+<h1>Ozzie — otras caras (por si quieres cambiar)</h1>
+<div class="sub">La de arriba es la elegida. Estas quedan de reserva si algún día quieres otra.</div>
+
+<div class="grid">
+
+  <!-- 1. Chat bubble smiley with tail -->
+  <div class="cell">
+    <div class="art">
+      <svg width="96" height="96" viewBox="0 0 100 100">
+        <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ff09a"/><stop offset="1" stop-color="#2fae67"/></linearGradient></defs>
+        <path d="M50 12C27 12 12 26 12 45c0 11 6 20 15 26-1 5-4 9-8 12 8 0 16-3 22-8 3 .5 6 .8 9 .8 23 0 38-14 38-31S73 12 50 12Z" fill="url(#g1)"/>
+        <circle cx="38" cy="42" r="4.2" fill="#062112"/>
+        <circle cx="62" cy="42" r="4.2" fill="#062112"/>
+        <path d="M37 55c4 5 8.5 7.5 13 7.5S59 60 63 55" stroke="#062112" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="tag">Option 1</div>
+    <div class="name">Chat-bubble smiley</div>
+  </div>
+
+  <!-- 2. Winking AI bubble with antenna -->
+  <div class="cell">
+    <div class="art">
+      <svg width="96" height="96" viewBox="0 0 100 100">
+        <defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ff09a"/><stop offset="1" stop-color="#2fae67"/></linearGradient></defs>
+        <line x1="50" y1="6" x2="50" y2="16" stroke="#e8a23a" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="50" cy="6" r="4" fill="#e8a23a"/>
+        <rect x="16" y="18" width="68" height="58" rx="26" fill="url(#g2)"/>
+        <path d="M30 66c-1 5-4 9-8 12 7 0 13-3 18-7Z" fill="url(#g2)"/>
+        <path d="M33 44c2.5-3 7-3 9 0" stroke="#062112" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="65" cy="45" r="4.2" fill="#062112"/>
+        <path d="M38 57c3.5 4 8 6 12 6s8.5-2 12-6" stroke="#062112" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="tag">Option 2</div>
+    <div class="name">Winking AI bubble</div>
+  </div>
+
+  <!-- 3. Rounded blob with cheeks -->
+  <div class="cell">
+    <div class="art">
+      <svg width="96" height="96" viewBox="0 0 100 100">
+        <defs><radialGradient id="g3" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#6ff2a6"/><stop offset="70%" stop-color="#3ecf7e"/><stop offset="100%" stop-color="#25a35f"/></radialGradient></defs>
+        <path d="M50 14C30 14 16 28 16 47s14 33 34 33 34-14 34-33S70 14 50 14Z" fill="url(#g3)"/>
+        <circle cx="37" cy="46" r="4.5" fill="#062112"/>
+        <circle cx="63" cy="46" r="4.5" fill="#062112"/>
+        <circle cx="30" cy="56" r="5" fill="#2fae67"/>
+        <circle cx="70" cy="56" r="5" fill="#2fae67"/>
+        <path d="M40 59c3 4 6.5 6 10 6s7-2 10-6" stroke="#062112" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="tag">Option 3</div>
+    <div class="name">Chubby cheeks</div>
+  </div>
+
+  <!-- 4. "o" monogram smile -->
+  <div class="cell">
+    <div class="art">
+      <svg width="96" height="96" viewBox="0 0 100 100">
+        <defs><linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ff09a"/><stop offset="1" stop-color="#2fae67"/></linearGradient></defs>
+        <circle cx="50" cy="50" r="34" fill="none" stroke="url(#g4)" stroke-width="9"/>
+        <circle cx="40" cy="44" r="4" fill="#3ecf7e"/>
+        <circle cx="60" cy="44" r="4" fill="#3ecf7e"/>
+        <path d="M38 56c3.5 5 8 7.5 12 7.5S58.5 61 62 56" stroke="#3ecf7e" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M74 74l10 10" stroke="url(#g4)" stroke-width="9" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="tag">Option 4</div>
+    <div class="name">"o" monogram smile</div>
+  </div>
+
+  <!-- 5. Speech bubble + soft square face (app-icon feel) -->
+  <div class="cell">
+    <div class="art">
+      <svg width="96" height="96" viewBox="0 0 100 100">
+        <defs><linearGradient id="g5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ecf7e"/><stop offset="1" stop-color="#1f8f52"/></linearGradient></defs>
+        <rect x="14" y="16" width="72" height="62" rx="22" fill="url(#g5)"/>
+        <path d="M34 74l-8 12 22-8Z" fill="url(#g5)"/>
+        <circle cx="39" cy="43" r="4.6" fill="#f3f1ea"/>
+        <circle cx="61" cy="43" r="4.6" fill="#f3f1ea"/>
+        <path d="M37 56c3.6 4.6 8 7 13 7s9.4-2.4 13-7" stroke="#f3f1ea" stroke-width="4.8" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="tag">Option 5</div>
+    <div class="name">App-icon bubble</div>
+  </div>
+
+  <!-- 6. Minimal line bubble smiley -->
+  <div class="cell">
+    <div class="art">
+      <svg width="96" height="96" viewBox="0 0 100 100">
+        <path d="M50 16C28 16 14 29 14 46c0 10 5 18 14 24-1 5-4 9-8 12 7 0 14-3 20-7 3 .5 7 .8 10 .8 22 0 36-13 36-30S72 16 50 16Z" fill="none" stroke="#3ecf7e" stroke-width="4.5"/>
+        <circle cx="38" cy="44" r="3.6" fill="#3ecf7e"/>
+        <circle cx="62" cy="44" r="3.6" fill="#3ecf7e"/>
+        <path d="M38 55c3.5 4.5 8 7 12 7s8.5-2.5 12-7" stroke="#3ecf7e" stroke-width="4.2" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="tag">Option 6</div>
+    <div class="name">Minimal outline</div>
+  </div>
+
+</div>
+
+<div class="row2">
+  <h2>Y así se ven con el nombre (lockup)</h2>
+  <div class="lockrow">
+    <div class="lockup">
+      <svg width="46" height="46" viewBox="0 0 100 100">
+        <defs><linearGradient id="l1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ff09a"/><stop offset="1" stop-color="#2fae67"/></linearGradient></defs>
+        <path d="M50 12C27 12 12 26 12 45c0 11 6 20 15 26-1 5-4 9-8 12 8 0 16-3 22-8 3 .5 6 .8 9 .8 23 0 38-14 38-31S73 12 50 12Z" fill="url(#l1)"/>
+        <circle cx="38" cy="42" r="4.2" fill="#062112"/><circle cx="62" cy="42" r="4.2" fill="#062112"/>
+        <path d="M37 55c4 5 8.5 7.5 13 7.5S59 60 63 55" stroke="#062112" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="word">ozzie<b>.</b></div>
+    </div>
+    <div class="lockup">
+      <svg width="46" height="46" viewBox="0 0 100 100">
+        <defs><linearGradient id="l5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ecf7e"/><stop offset="1" stop-color="#1f8f52"/></linearGradient></defs>
+        <rect x="14" y="16" width="72" height="62" rx="22" fill="url(#l5)"/><path d="M34 74l-8 12 22-8Z" fill="url(#l5)"/>
+        <circle cx="39" cy="43" r="4.6" fill="#f3f1ea"/><circle cx="61" cy="43" r="4.6" fill="#f3f1ea"/>
+        <path d="M37 56c3.6 4.6 8 7 13 7s9.4-2.4 13-7" stroke="#f3f1ea" stroke-width="4.8" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="word">Ozzie</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

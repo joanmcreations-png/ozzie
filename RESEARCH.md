@@ -1,4 +1,4 @@
-# Frankie (antes NeverMiss) — Validación de mercado (julio 2026)
+# Ozzie (antes NeverMiss) — Validación de mercado (julio 2026)
 
 ## 1. El problema es real (datos con fuente)
 - 78% de clientes compran al PRIMER negocio que responde (estudio MIT/InsideSales)

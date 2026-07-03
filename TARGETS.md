@@ -1,4 +1,4 @@
-# Frankie — Mercado Vancouver + primera lista de objetivos
+# Ozzie — Mercado Vancouver + primera lista de objetivos
 
 ## Tamaño real del mercado (Metro Vancouver)
 - Barberías: 85+ puntuadas solo en Vancouver ciudad (Yably) + 21 en North Van — reales hay bastantes más las no listadas
@@ -32,7 +32,7 @@ DESCARTAR: Tommy Gun's (cadena corporativa, no decide el local).
 3. Apuntar un detalle específico (una reseña, algo de su web) para la primera línea del email
 
 ## Calendario 14 días
-- **Día 1-2:** subir Frankie online (Railway) + Stripe payment link + dominio
+- **Día 1-2:** subir Ozzie online (Railway) + Stripe payment link + dominio
 - **Día 3:** completar tanda 1 (checklist de los 10) — 1 hora
 - **Día 4:** enviar 5 emails/DMs (los objetivos A)
 - **Día 5:** enviar 5 más
