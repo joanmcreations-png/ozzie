@@ -21,12 +21,13 @@ const PORT    = process.env.PORT || 3210;
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const MODEL   = 'claude-haiku-4-5-20251001';
 
-// WhatsApp Cloud API
+// WhatsApp Cloud API — one token, many numbers. Each business's own WhatsApp
+// number lives in Supabase (businesses.whatsapp_phone_number_id); incoming
+// webhooks are routed to the right business by that number, so adding a new
+// client is just a new row in Supabase, no code/deploy needed.
 const WA_TOKEN     = process.env.WHATSAPP_TOKEN || '';
-const WA_PHONE_ID  = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
 const WA_VERIFY    = process.env.WHATSAPP_VERIFY_TOKEN || 'ozzie-verify';
-const WA_BUSINESS  = process.env.WHATSAPP_BUSINESS || 'barber'; // which BIZ_FACTS entry this WhatsApp number represents
-const waHistory = new Map(); // phone -> [{role, content}]
+const waHistory = new Map(); // "phoneNumberId:customerPhone" -> [{role, content}]
 
 // Supabase (conversation history + client panel)
 const SB_URL          = process.env.SUPABASE_URL || '';
@@ -60,20 +61,21 @@ function sbFetch(pathAndQuery, { method = 'GET', body, prefer } = {}) {
   });
 }
 
-async function getOrCreateConversation(businessSlug, phone) {
-  const businesses = await sbFetch(`businesses?slug=eq.${encodeURIComponent(businessSlug)}&select=id,bot_enabled,facts,name`);
-  const business = businesses && businesses[0];
-  if (!business) return null;
+async function getBusinessByPhoneId(phoneNumberId) {
+  const businesses = await sbFetch(`businesses?whatsapp_phone_number_id=eq.${encodeURIComponent(phoneNumberId)}&select=id,bot_enabled,facts,name`);
+  return businesses && businesses[0];
+}
 
+async function getOrCreateConversation(business, phone) {
   const existing = await sbFetch(`conversations?business_id=eq.${business.id}&customer_phone=eq.${encodeURIComponent(phone)}&select=id,bot_enabled`);
-  if (existing && existing[0]) return { business, conversation: existing[0] };
+  if (existing && existing[0]) return existing[0];
 
   const created = await sbFetch('conversations', {
     method: 'POST',
     body: { business_id: business.id, customer_phone: phone },
     prefer: 'return=representation'
   });
-  return { business, conversation: created[0] };
+  return created[0];
 }
 
 function logMessage(conversationId, role, content) {
@@ -100,10 +102,10 @@ Horario: lunes a viernes 8:00-17:00. Urgencias mismo día si es posible.
 Precios: limpieza desde $150, revisión + rayos X $120. Aceptan la mayoría de seguros.`
 };
 
-function systemPrompt(business, lang) {
+function systemPrompt(facts, lang) {
   return `Eres la persona que lleva el WhatsApp de este negocio:
 
-${BIZ_FACTS[business] || BIZ_FACTS.barber}
+${facts}
 
 Cómo escribes:
 - REGLA DE IDIOMA (la más importante): responde SIEMPRE en el MISMO idioma en que te escribe el cliente en su último mensaje. Si te escribe en inglés, respondes en inglés. Si te escribe en español, en español. NUNCA cambies de idioma tú solo. Este negocio está en Vancouver (Canadá): POR DEFECTO todo es en INGLÉS. Si el mensaje NO tiene idioma claro (solo emoji, números, símbolos o un saludo ambiguo): responde en INGLÉS. Solo usa español si el cliente escribe claramente en español.
@@ -122,7 +124,7 @@ BOOKING_CONFIRMED|<servicio o personas>|<día y hora>|<nombre>
 - REGLA ANTI-INVENCIÓN (crítica): SOLO puedes afirmar datos que estén escritos arriba (horario, dirección, precios listados). CUALQUIER otra cosa que no esté arriba —opciones veganas/sin gluten, parking, métodos de pago, descuentos, qué seguros aceptáis, promociones, servicios extra— NO la afirmes ni la niegues con detalles inventados. En su lugar di con naturalidad que se lo confirmas, VARIANDO la frase cada vez (nunca repitas la misma palabra por palabra): p.ej. "let me check that for you and get back in a sec", "not 100% sure — I'll confirm with the team and let you know", "good q! I'll double-check and text you back", etc. En español igual, variando. Es preferible decir "te lo confirmo" antes que inventar. Inventar un dato falso es el peor error posible.`;
 }
 
-function sendWhatsAppMessage(to, text) {
+function sendWhatsAppMessage(phoneNumberId, to, text) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
       messaging_product: 'whatsapp',
@@ -132,7 +134,7 @@ function sendWhatsAppMessage(to, text) {
     });
     const req = https.request({
       hostname: 'graph.facebook.com',
-      path: `/v21.0/${WA_PHONE_ID}/messages`,
+      path: `/v21.0/${phoneNumberId}/messages`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -152,39 +154,45 @@ function sendWhatsAppMessage(to, text) {
   });
 }
 
-async function handleIncomingWhatsApp(from, text) {
-  const history = waHistory.get(from) || [];
+async function handleIncomingWhatsApp(phoneNumberId, from, text) {
+  const historyKey = `${phoneNumberId}:${from}`;
+  const history = waHistory.get(historyKey) || [];
   history.push({ role: 'user', content: text });
   const clean = history.slice(-14);
 
-  let ctx = null;
+  let business = null, conversation = null;
   try {
-    ctx = await getOrCreateConversation(WA_BUSINESS, from);
+    business = await getBusinessByPhoneId(phoneNumberId);
+    if (business) conversation = await getOrCreateConversation(business, from);
   } catch (e) {
     console.error('Supabase lookup error:', e.message);
   }
-  if (ctx) logMessage(ctx.conversation.id, 'user', text);
+  if (!business) {
+    console.error('No business configured in Supabase for WhatsApp number', phoneNumberId);
+    return;
+  }
+  if (conversation) logMessage(conversation.id, 'user', text);
 
-  const botOff = ctx && (ctx.business.bot_enabled === false || ctx.conversation.bot_enabled === false);
+  const botOff = business.bot_enabled === false || (conversation && conversation.bot_enabled === false);
   if (botOff) return; // human has taken over this chat, or bot paused for this business
 
   try {
     const r = await callAnthropic({
       model: MODEL,
       max_tokens: 400,
-      system: systemPrompt(WA_BUSINESS, 'en'),
+      system: systemPrompt(business.facts, 'en'),
       messages: clean
     });
     let reply = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     const booking = reply.match(/BOOKING_CONFIRMED\|([^|]*)\|([^|]*)\|([^\n]*)/);
     reply = reply.replace(/BOOKING_CONFIRMED\|[^\n]*/g, '').trim();
     history.push({ role: 'assistant', content: reply });
-    waHistory.set(from, history);
-    if (ctx) {
-      logMessage(ctx.conversation.id, 'assistant', reply);
-      if (booking) saveBooking(ctx.conversation.id, ctx.business.id, booking[1].trim(), booking[2].trim(), booking[3].trim());
+    waHistory.set(historyKey, history);
+    if (conversation) {
+      logMessage(conversation.id, 'assistant', reply);
+      if (booking) saveBooking(conversation.id, business.id, booking[1].trim(), booking[2].trim(), booking[3].trim());
     }
-    await sendWhatsAppMessage(from, reply);
+    await sendWhatsAppMessage(phoneNumberId, from, reply);
   } catch (e) {
     console.error('WhatsApp handling error:', e.message);
   }
@@ -248,9 +256,10 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = JSON.parse(body);
         const changes = payload.entry?.[0]?.changes?.[0]?.value;
+        const phoneNumberId = changes?.metadata?.phone_number_id;
         const msg = changes?.messages?.[0];
-        if (msg && msg.type === 'text') {
-          handleIncomingWhatsApp(msg.from, msg.text.body);
+        if (msg && msg.type === 'text' && phoneNumberId) {
+          handleIncomingWhatsApp(phoneNumberId, msg.from, msg.text.body);
         }
       } catch (e) { console.error('Webhook parse error:', e.message); }
     });
@@ -277,7 +286,7 @@ const server = http.createServer(async (req, res) => {
         const r = await callAnthropic({
           model: MODEL,
           max_tokens: 400,
-          system: systemPrompt(business, lang),
+          system: systemPrompt(BIZ_FACTS[business] || BIZ_FACTS.barber, lang),
           messages: clean
         });
         const text = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
@@ -325,6 +334,32 @@ const server = http.createServer(async (req, res) => {
         const rows = await sbFetch(`messages?conversation_id=eq.${encodeURIComponent(cid)}&select=role,content,created_at&order=created_at.asc`);
         res.end(JSON.stringify(rows));
       } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+      return;
+    }
+
+    if (pathname === '/api/panel/businesses' && req.method === 'GET') {
+      try {
+        const rows = await sbFetch('businesses?select=id,slug,name,whatsapp_phone_number_id,bot_enabled,created_at&order=created_at.desc');
+        res.end(JSON.stringify(rows));
+      } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+      return;
+    }
+
+    if (pathname === '/api/panel/businesses' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', async () => {
+        try {
+          const { slug, name, whatsapp_phone_number_id, facts } = JSON.parse(body);
+          if (!slug || !name || !whatsapp_phone_number_id) throw new Error('slug, name and whatsapp_phone_number_id are required');
+          const created = await sbFetch('businesses', {
+            method: 'POST',
+            body: { slug, name, whatsapp_phone_number_id, facts: facts || '' },
+            prefer: 'return=representation'
+          });
+          res.end(JSON.stringify(created[0]));
+        } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+      });
       return;
     }
 

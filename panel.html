@@ -29,7 +29,21 @@
 
   /* app */
   #app { display:none; height:100vh; }
-  header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--line); }
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--line); gap:16px; }
+  .headerBtn { background:var(--card2); border:1px solid var(--line); color:var(--text); padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer; font-family:var(--sans); }
+  .headerBtn:hover { border-color:var(--green); }
+  #clientsModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; z-index:10; }
+  #clientsModal .box { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:28px; width:480px; max-height:80vh; overflow-y:auto; }
+  #clientsModal h3 { font-family:var(--serif); font-weight:600; margin-bottom:16px; }
+  #clientsModal .biz-row { padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; }
+  #clientsModal .biz-row b { font-size:14px; }
+  #clientsModal .biz-row .num { color:var(--dim2); }
+  #clientsModal input, #clientsModal textarea { width:100%; margin-top:10px; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card2); color:var(--text); font-size:14px; font-family:var(--sans); }
+  #clientsModal textarea { min-height:80px; resize:vertical; }
+  #clientsModal .row2 { display:flex; gap:10px; }
+  #clientsModal button.save { margin-top:14px; width:100%; padding:11px; border:none; border-radius:8px; background:var(--green); color:#062112; font-weight:700; cursor:pointer; }
+  #clientsModal .close { float:right; cursor:pointer; color:var(--dim2); }
+  #clientsModal .formErr { color:#e8776a; font-size:12px; margin-top:8px; min-height:14px; }
   .layout { display:flex; height:calc(100vh - 57px); }
   #list { width:320px; border-right:1px solid var(--line); overflow-y:auto; flex-shrink:0; }
   .conv { padding:14px 18px; border-bottom:1px solid var(--line); cursor:pointer; }
@@ -64,8 +78,28 @@
 <div id="app">
   <header>
     <div class="brand">ozzie<span class="dot">.</span> <span style="font-family:var(--sans);font-size:13px;color:var(--dim2);font-weight:400;">panel</span></div>
-    <div style="color:var(--dim2);font-size:13px;" id="refreshedAt"></div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="color:var(--dim2);font-size:13px;" id="refreshedAt"></div>
+      <button class="headerBtn" onclick="openClients()">Clients</button>
+    </div>
   </header>
+
+  <div id="clientsModal">
+    <div class="box">
+      <span class="close" onclick="closeClients()">✕</span>
+      <h3>Clients</h3>
+      <div id="bizList"></div>
+      <h3 style="margin-top:20px;">Add new client</h3>
+      <input id="bizName" placeholder="Business name (e.g. Guido's Barbershop)">
+      <div class="row2">
+        <input id="bizSlug" placeholder="Short id (e.g. guidos)">
+        <input id="bizPhoneId" placeholder="WhatsApp phone_number_id">
+      </div>
+      <textarea id="bizFacts" placeholder="Hours, address, prices — whatever the bot should know. Plain text, in the business's own words."></textarea>
+      <button class="save" onclick="addClient()">Add client</button>
+      <div class="formErr" id="bizErr"></div>
+    </div>
+  </div>
   <div class="layout">
     <div id="list"></div>
     <div id="thread">
@@ -154,6 +188,42 @@ async function toggleBot() {
 }
 
 function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function openClients() {
+  document.getElementById('clientsModal').style.display = 'flex';
+  document.getElementById('bizErr').textContent = '';
+  const r = await fetch('/api/panel/businesses?token=' + encodeURIComponent(TOKEN));
+  const rows = await r.json();
+  document.getElementById('bizList').innerHTML = rows.map(b => `
+    <div class="biz-row"><b>${escapeHtml(b.name)}</b> (${escapeHtml(b.slug)})<br>
+    <span class="num">${escapeHtml(b.whatsapp_phone_number_id)}</span></div>
+  `).join('') || '<div class="empty">No clients yet</div>';
+}
+
+function closeClients() { document.getElementById('clientsModal').style.display = 'none'; }
+
+async function addClient() {
+  const name = document.getElementById('bizName').value.trim();
+  const slug = document.getElementById('bizSlug').value.trim();
+  const whatsapp_phone_number_id = document.getElementById('bizPhoneId').value.trim();
+  const facts = document.getElementById('bizFacts').value.trim();
+  const errEl = document.getElementById('bizErr');
+  if (!name || !slug || !whatsapp_phone_number_id) {
+    errEl.textContent = 'Name, short id and phone_number_id are required.';
+    return;
+  }
+  const r = await fetch('/api/panel/businesses?token=' + encodeURIComponent(TOKEN), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, slug, whatsapp_phone_number_id, facts })
+  });
+  const j = await r.json();
+  if (j.error) { errEl.textContent = j.error; return; }
+  document.getElementById('bizName').value = '';
+  document.getElementById('bizSlug').value = '';
+  document.getElementById('bizPhoneId').value = '';
+  document.getElementById('bizFacts').value = '';
+  openClients();
+}
 
 if (TOKEN) enterApp();
 </script>
