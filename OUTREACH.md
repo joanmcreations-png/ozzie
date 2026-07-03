@@ -1,4 +1,4 @@
-# NeverMiss — Outreach (cold email)
+# Frankie — Outreach (cold email)
 
 Regla de oro: cortos, imperfectos, sin diseño, sin logos, como si el dueño de un negocio pequeño le escribiera a otro. Nada de "I hope this email finds you well".
 
@@ -51,6 +51,6 @@ Regla de oro: cortos, imperfectos, sin diseño, sin logos, como si el dueño de 
 
 ## Notas
 - {Nombre}: un nombre normal, consistente en todo (emails, landing, Stripe).
-- Firmar sin cargo ni empresa grandilocuente. Como mucho: "{Nombre} · NeverMiss · Vancouver".
+- Firmar sin cargo ni empresa grandilocuente. Como mucho: "Joan · Frankie · Vancouver".
 - El link es la landing con la demo. La demo vende; el email solo consigue el clic.
 - Cambiar {barbershops}/{salons} según el nicho de la tanda.
