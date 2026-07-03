@@ -46,48 +46,25 @@
   .btn.small { padding:10px 20px; font-size:13.5px; }
 
   /* ── hero ── */
-  .hero { padding:56px 0 30px; display:grid; grid-template-columns:1.15fr .85fr; gap:56px; align-items:center; }
-  .eyebrow { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--dim); background:var(--card); border:1px solid var(--line); padding:7px 14px 7px 8px; border-radius:100px; margin-bottom:22px; }
-  .eyebrow .dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px rgba(62,207,126,.18); }
-  .hero h1 { font-family:var(--serif); font-size:clamp(36px, 4.4vw, 56px); font-weight:600; letter-spacing:-0.02em; line-height:1.05; }
+  .hero { padding:64px 0 44px; text-align:center; max-width:640px; margin:0 auto; }
+  .hero h1 { font-family:var(--serif); font-size:clamp(34px, 6vw, 54px); font-weight:600; letter-spacing:-0.02em; line-height:1.08; }
   .hero h1 em { font-style:italic; font-weight:500; color:var(--green); }
-  .hero p { max-width:480px; margin:22px 0 30px; color:var(--dim); font-size:17px; }
-  .cta-row { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  .hero p { max-width:440px; margin:20px auto 32px; color:var(--dim); font-size:17px; }
+  .cta-row { display:flex; flex-direction:column; align-items:center; gap:12px; }
   .cta-row .sub { font-size:12.5px; color:var(--dim2); }
 
-  .hero-visual { position:relative; }
-  .phone-mock {
-    background:linear-gradient(180deg, var(--card2), var(--card)); border:1px solid var(--line);
-    border-radius:26px; padding:18px; box-shadow:0 40px 90px rgba(0,0,0,.5);
-    max-width:340px; margin:0 auto;
+  .hero-visual { margin:52px auto 0; max-width:520px; }
+  .placeholder-shot {
+    aspect-ratio:16/9; border-radius:20px; border:1.5px dashed var(--line);
+    background:var(--card); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; color:var(--dim2);
   }
-  .pm-head { display:flex; align-items:center; gap:10px; padding-bottom:14px; margin-bottom:14px; border-bottom:1px solid var(--line-soft); }
-  .avatar {
-    width:38px; height:38px; border-radius:50%; flex-shrink:0; position:relative;
-    background:radial-gradient(circle at 32% 28%, #ffcf8f, var(--amber) 60%, #c97c1c);
-  }
-  .avatar::after { content:''; position:absolute; right:-1px; bottom:-1px; width:11px; height:11px; border-radius:50%; background:var(--green); border:2px solid var(--card2); }
-  .pm-name { font-weight:700; font-size:14.5px; }
-  .pm-status { font-size:12px; color:var(--green); }
-  .bubble { max-width:84%; padding:10px 13px; border-radius:14px; font-size:13.5px; line-height:1.4; margin-bottom:9px; animation:rise .5s ease both; }
-  .bubble.in { background:var(--card2); border:1px solid var(--line-soft); border-bottom-left-radius:4px; }
-  .bubble.out { background:var(--green); color:#062112; font-weight:600; margin-left:auto; border-bottom-right-radius:4px; }
-  .bubble:nth-child(2){ animation-delay:.05s; } .bubble:nth-child(3){ animation-delay:.35s; } .bubble:nth-child(4){ animation-delay:.65s; } .bubble:nth-child(5){ animation-delay:.95s; }
-  @keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-  .pm-time { text-align:center; font-size:11px; color:var(--dim2); margin:2px 0 10px; }
+  .placeholder-shot .q { font-family:var(--serif); font-style:italic; font-size:34px; color:var(--dim2); }
+  .placeholder-shot span { font-size:12.5px; }
 
-  .float-tag {
-    position:absolute; background:var(--card2); border:1px solid var(--line); border-radius:12px;
-    padding:9px 13px; font-size:12px; font-weight:600; box-shadow:0 14px 30px rgba(0,0,0,.4);
-    display:flex; align-items:center; gap:7px;
-  }
-  .float-tag.t1 { top:6%; right:-6%; color:var(--green); }
-  .float-tag.t2 { bottom:10%; left:-9%; color:var(--amber); }
-  .float-tag svg { width:14px; height:14px; }
-
-  .stat-row { display:flex; gap:44px; margin-top:54px; flex-wrap:wrap; border-top:1px solid var(--line-soft); padding-top:34px; }
-  .stat b { display:block; font-family:var(--serif); font-size:30px; font-weight:600; letter-spacing:-0.02em; }
-  .stat span { font-size:12.5px; color:var(--dim2); }
+  .stat-row { display:flex; justify-content:center; gap:40px; margin-top:52px; flex-wrap:wrap; }
+  .stat b { display:block; font-family:var(--serif); font-size:26px; font-weight:600; letter-spacing:-0.02em; }
+  .stat span { font-size:12px; color:var(--dim2); }
 
   /* ── sections ── */
   section { padding:96px 0; }
@@ -169,36 +146,21 @@
   </nav>
 
   <div class="hero">
-    <div>
-      <div class="eyebrow"><span class="dot"></span> Built for shops that answer their own DMs</div>
-      <h1>Someone always answers.<br><em>Even at 2am.</em></h1>
-      <p>Customers message your business on WhatsApp and Instagram at all hours. Frankie replies in seconds — prices, hours, directions — and locks in the booking. Sounds like your front desk, not a robot.</p>
-      <div class="cta-row">
-        <a class="btn" href="#demo">See it answer, live →</a>
-        <span class="sub">No signup. Try it right on this page.</span>
-      </div>
-
-      <div class="stat-row">
-        <div class="stat"><b>78%</b><span>buy from whoever<br>replies first (MIT)</span></div>
-        <div class="stat"><b>&lt;10s</b><span>average reply,<br>day or night</span></div>
-        <div class="stat"><b>35%</b><span>of bookings happen<br>after hours</span></div>
-      </div>
+    <h1>Someone always answers.<br><em>Even at 2am.</em></h1>
+    <p>Customers message your business on WhatsApp and Instagram at all hours. Frankie replies in seconds and books the appointment — sounds like your front desk, not a robot.</p>
+    <div class="cta-row">
+      <a class="btn" href="#demo">See it answer, live →</a>
+      <span class="sub">No signup. Try it right on this page.</span>
     </div>
 
     <div class="hero-visual">
-      <div class="float-tag t1"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#3ecf7e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Booked in 40 sec</div>
-      <div class="float-tag t2">😴 You're asleep</div>
-      <div class="phone-mock">
-        <div class="pm-head">
-          <div class="avatar"></div>
-          <div><div class="pm-name">Frankie</div><div class="pm-status">active now</div></div>
-        </div>
-        <div class="pm-time">Today, 11:47pm</div>
-        <div class="bubble in">hey do you have anything open sat afternoon? 👀</div>
-        <div class="bubble out">yess Mike has 2:30 or 4pm open — haircut + beard?</div>
-        <div class="bubble in">4pm works, put me down</div>
-        <div class="bubble out">done! see you sat at 4 🙌</div>
-      </div>
+      <div class="placeholder-shot"><span class="q">?</span><span>your shot goes here</span></div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><b>78%</b><span>buy from whoever replies first</span></div>
+      <div class="stat"><b>&lt;10s</b><span>average reply time</span></div>
+      <div class="stat"><b>35%</b><span>of bookings after hours</span></div>
     </div>
   </div>
 </div>
@@ -239,7 +201,7 @@
 <section>
   <div class="wrap">
     <div class="label">Why not just hire someone</div>
-    <h2>A front desk person costs <em>$3,400/mo.</em><br>Frankie costs $99.</h2>
+    <h2>A front desk person costs <em>$3,400/mo.</em><br>Frankie costs $129.</h2>
     <div class="compare">
       <div class="col no">
         <h4>A part-time hire</h4>
@@ -256,7 +218,7 @@
           <li>Answers nights, weekends, holidays</li>
           <li>Never sick, never late, never quits</li>
           <li>Live in 24 hours, no training</li>
-          <li>Flat $99/month</li>
+          <li>Flat $129/month</li>
         </ul>
       </div>
     </div>
@@ -267,9 +229,9 @@
   <div class="wrap center">
     <div class="label">Pricing</div>
     <h2>Less than one missed<br><em>customer</em> a month.</h2>
-    <div class="founding-banner">🔥 Founding offer — first 10 shops lock in $79/mo for life</div>
+    <div class="founding-banner">🔥 Founding offer — first 10 shops lock in $129/mo for life</div>
     <div class="price-box">
-      <div class="price"><span class="strike">$99</span>$79<small>/month</small></div>
+      <div class="price"><span class="strike">$149</span>$129<small>/month</small></div>
       <div class="trial">First 14 days free</div>
       <ul>
         <li>Unlimited customer conversations</li>
