@@ -173,7 +173,7 @@ function sendInstagramMessage(igAccountId, recipientId, text) {
       message: { text }
     });
     const req = https.request({
-      hostname: 'graph.facebook.com',
+      hostname: 'graph.instagram.com',
       path: `/v21.0/${igAccountId}/messages`,
       method: 'POST',
       headers: {
