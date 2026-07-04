@@ -33,6 +33,7 @@ const waHistory = new Map(); // "phoneNumberId:customerPhone" -> [{role, content
 // Each business's Instagram professional account id lives in Supabase
 // (businesses.instagram_account_id); same webhook, same verify token.
 const IG_TOKEN  = process.env.INSTAGRAM_TOKEN || WA_TOKEN;
+const IG_TEST_MODE = process.env.INSTAGRAM_TEST_MODE === 'true';
 const igHistory = new Map(); // "igAccountId:senderPsid" -> [{role, content}]
 
 // Supabase (conversation history + client panel)
@@ -246,6 +247,16 @@ async function handleIncomingInstagram(igAccountId, senderId, text) {
   let business = null, conversation = null;
   try {
     business = await getBusinessByInstagramId(igAccountId);
+    if (business && IG_TEST_MODE) {
+      // Modo prueba: solo contesta a quien ya tenga conversación abierta, o a la
+      // primera persona que escriba si todavía no hay ninguna (así el bot no
+      // responde a seguidores reales de la cuenta mientras se está probando).
+      const others = await sbFetch(`conversations?business_id=eq.${business.id}&customer_phone=neq.${encodeURIComponent(senderId)}&select=id&limit=1`);
+      if (others && others.length) {
+        console.log('Instagram test mode: ignorando mensaje de', senderId, '(no es la cuenta de prueba)');
+        return;
+      }
+    }
     if (business) conversation = await getOrCreateConversation(business, senderId);
   } catch (e) {
     console.error('Supabase lookup error:', e.message);
