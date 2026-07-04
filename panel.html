@@ -96,7 +96,10 @@
       <input id="bizName" placeholder="Business name (e.g. Guido's Barbershop)">
       <div class="row2">
         <input id="bizSlug" placeholder="Short id (e.g. guidos)">
-        <input id="bizPhoneId" placeholder="WhatsApp phone_number_id">
+        <input id="bizPhoneId" placeholder="WhatsApp phone_number_id (optional)">
+      </div>
+      <div class="row2">
+        <input id="bizIgId" placeholder="Instagram account_id (optional)">
       </div>
       <textarea id="bizFacts" placeholder="Hours, address, prices — whatever the bot should know. Plain text, in the business's own words."></textarea>
       <button class="save" onclick="addClient()">Add client</button>
@@ -205,7 +208,7 @@ async function openClients() {
   const rows = await r.json();
   document.getElementById('bizList').innerHTML = rows.map(b => `
     <div class="biz-row"><b>${escapeHtml(b.name)}</b> (${escapeHtml(b.slug)})<br>
-    <span class="num">${escapeHtml(b.whatsapp_phone_number_id)}</span></div>
+    <span class="num">${b.whatsapp_phone_number_id ? 'WhatsApp: ' + escapeHtml(b.whatsapp_phone_number_id) : ''}${b.whatsapp_phone_number_id && b.instagram_account_id ? ' · ' : ''}${b.instagram_account_id ? 'Instagram: ' + escapeHtml(b.instagram_account_id) : ''}</span></div>
   `).join('') || '<div class="empty">No clients yet</div>';
 }
 
@@ -215,21 +218,23 @@ async function addClient() {
   const name = document.getElementById('bizName').value.trim();
   const slug = document.getElementById('bizSlug').value.trim();
   const whatsapp_phone_number_id = document.getElementById('bizPhoneId').value.trim();
+  const instagram_account_id = document.getElementById('bizIgId').value.trim();
   const facts = document.getElementById('bizFacts').value.trim();
   const errEl = document.getElementById('bizErr');
-  if (!name || !slug || !whatsapp_phone_number_id) {
-    errEl.textContent = 'Name, short id and phone_number_id are required.';
+  if (!name || !slug || (!whatsapp_phone_number_id && !instagram_account_id)) {
+    errEl.textContent = 'Name, short id and at least one of WhatsApp / Instagram id are required.';
     return;
   }
   const r = await fetch('/api/panel/businesses?token=' + encodeURIComponent(TOKEN), {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ name, slug, whatsapp_phone_number_id, facts })
+    body: JSON.stringify({ name, slug, whatsapp_phone_number_id, instagram_account_id, facts })
   });
   const j = await r.json();
   if (j.error) { errEl.textContent = j.error; return; }
   document.getElementById('bizName').value = '';
   document.getElementById('bizSlug').value = '';
   document.getElementById('bizPhoneId').value = '';
+  document.getElementById('bizIgId').value = '';
   document.getElementById('bizFacts').value = '';
   openClients();
 }

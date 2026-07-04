@@ -29,6 +29,12 @@ const WA_TOKEN     = process.env.WHATSAPP_TOKEN || '';
 const WA_VERIFY    = process.env.WHATSAPP_VERIFY_TOKEN || 'ozzie-verify';
 const waHistory = new Map(); // "phoneNumberId:customerPhone" -> [{role, content}]
 
+// Instagram DM — same Meta Graph API/App as WhatsApp, different product.
+// Each business's Instagram professional account id lives in Supabase
+// (businesses.instagram_account_id); same webhook, same verify token.
+const IG_TOKEN  = process.env.INSTAGRAM_TOKEN || WA_TOKEN;
+const igHistory = new Map(); // "igAccountId:senderPsid" -> [{role, content}]
+
 // Supabase (conversation history + client panel)
 const SB_URL          = process.env.SUPABASE_URL || '';
 const SB_SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -63,6 +69,11 @@ function sbFetch(pathAndQuery, { method = 'GET', body, prefer } = {}) {
 
 async function getBusinessByPhoneId(phoneNumberId) {
   const businesses = await sbFetch(`businesses?whatsapp_phone_number_id=eq.${encodeURIComponent(phoneNumberId)}&select=id,bot_enabled,facts,name`);
+  return businesses && businesses[0];
+}
+
+async function getBusinessByInstagramId(igAccountId) {
+  const businesses = await sbFetch(`businesses?instagram_account_id=eq.${encodeURIComponent(igAccountId)}&select=id,bot_enabled,facts,name`);
   return businesses && businesses[0];
 }
 
@@ -103,14 +114,14 @@ Precios: limpieza desde $150, revisión + rayos X $120. Aceptan la mayoría de s
 };
 
 function systemPrompt(facts, lang) {
-  return `Eres la persona que lleva el WhatsApp de este negocio:
+  return `Eres la persona que lleva los mensajes (WhatsApp/Instagram) de este negocio:
 
 ${facts}
 
 Cómo escribes:
 - REGLA DE IDIOMA (la más importante): responde SIEMPRE en el MISMO idioma en que te escribe el cliente en su último mensaje. Si te escribe en inglés, respondes en inglés. Si te escribe en español, en español. NUNCA cambies de idioma tú solo. Este negocio está en Vancouver (Canadá): POR DEFECTO todo es en INGLÉS. Si el mensaje NO tiene idioma claro (solo emoji, números, símbolos o un saludo ambiguo): responde en INGLÉS. Solo usa español si el cliente escribe claramente en español.
 - Como una persona real del equipo, ocupada pero amable. Natural, cercano, cero corporativo.
-- Mensajes MUY cortos, estilo WhatsApp real: 1-2 frases. A veces empieza en minúscula. Emoji solo de vez en cuando (máximo 1).
+- Mensajes MUY cortos, estilo mensaje directo real: 1-2 frases. A veces empieza en minúscula. Emoji solo de vez en cuando (máximo 1).
 - Habla en voz de equipo: "abrimos"/"we're open", "te esperamos"/"see you then", "te lo miro"/"let me check".
 - Varía las frases, nunca suenes a plantilla. Nada de listas ni formato.
 - NUNCA digas que eres una IA, bot, asistente virtual o sistema automático. Y IGUAL de importante: nunca digas "no soy un bot" ni afirmes ser una persona — eso es mentir y está prohibido. Si te preguntan si eres un bot, NO respondas a la pregunta: ignórala con gracia y redirige, EN SU IDIOMA (ej. en inglés: "haha I'm right here to help — what do you need? 😄"; en español: "jaja tú dime qué necesitas y te lo miro ahora mismo 😄"). Ni sí, ni no, nunca.
@@ -146,6 +157,34 @@ function sendWhatsAppMessage(phoneNumberId, to, text) {
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) resolve(raw);
         else reject(new Error('WhatsApp send failed: ' + raw));
+      });
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+function sendInstagramMessage(igAccountId, recipientId, text) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      recipient: { id: recipientId },
+      message: { text }
+    });
+    const req = https.request({
+      hostname: 'graph.facebook.com',
+      path: `/v21.0/${igAccountId}/messages`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${IG_TOKEN}`
+      }
+    }, res => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve(raw);
+        else reject(new Error('Instagram send failed: ' + raw));
       });
     });
     req.on('error', reject);
@@ -198,6 +237,50 @@ async function handleIncomingWhatsApp(phoneNumberId, from, text) {
   }
 }
 
+async function handleIncomingInstagram(igAccountId, senderId, text) {
+  const historyKey = `${igAccountId}:${senderId}`;
+  const history = igHistory.get(historyKey) || [];
+  history.push({ role: 'user', content: text });
+  const clean = history.slice(-14);
+
+  let business = null, conversation = null;
+  try {
+    business = await getBusinessByInstagramId(igAccountId);
+    if (business) conversation = await getOrCreateConversation(business, senderId);
+  } catch (e) {
+    console.error('Supabase lookup error:', e.message);
+  }
+  if (!business) {
+    console.error('No business configured in Supabase for Instagram account', igAccountId);
+    return;
+  }
+  if (conversation) logMessage(conversation.id, 'user', text);
+
+  const botOff = business.bot_enabled === false || (conversation && conversation.bot_enabled === false);
+  if (botOff) return; // human has taken over this chat, or bot paused for this business
+
+  try {
+    const r = await callAnthropic({
+      model: MODEL,
+      max_tokens: 400,
+      system: systemPrompt(business.facts, 'en'),
+      messages: clean
+    });
+    let reply = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const booking = reply.match(/BOOKING_CONFIRMED\|([^|]*)\|([^|]*)\|([^\n]*)/);
+    reply = reply.replace(/BOOKING_CONFIRMED\|[^\n]*/g, '').trim();
+    history.push({ role: 'assistant', content: reply });
+    igHistory.set(historyKey, history);
+    if (conversation) {
+      logMessage(conversation.id, 'assistant', reply);
+      if (booking) saveBooking(conversation.id, business.id, booking[1].trim(), booking[2].trim(), booking[3].trim());
+    }
+    await sendInstagramMessage(igAccountId, senderId, reply);
+  } catch (e) {
+    console.error('Instagram handling error:', e.message);
+  }
+}
+
 function callAnthropic(body) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
@@ -247,7 +330,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Incoming WhatsApp messages
+  // Incoming WhatsApp + Instagram messages (same Meta webhook endpoint)
   if (req.method === 'POST' && pathname === '/webhook') {
     let body = '';
     req.on('data', c => body += c);
@@ -255,6 +338,15 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200); res.end('EVENT_RECEIVED'); // ack immediately, Meta requires <5s
       try {
         const payload = JSON.parse(body);
+        if (payload.object === 'instagram') {
+          const messaging = payload.entry?.[0]?.messaging?.[0];
+          const igAccountId = messaging?.recipient?.id;
+          // is_echo = message the business itself sent via the API, played back to us — ignore, or we'd reply to ourselves
+          if (messaging?.message && !messaging.message.is_echo && messaging.message.text && igAccountId) {
+            handleIncomingInstagram(igAccountId, messaging.sender.id, messaging.message.text);
+          }
+          return;
+        }
         const changes = payload.entry?.[0]?.changes?.[0]?.value;
         const phoneNumberId = changes?.metadata?.phone_number_id;
         const msg = changes?.messages?.[0];
@@ -339,7 +431,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/panel/businesses' && req.method === 'GET') {
       try {
-        const rows = await sbFetch('businesses?select=id,slug,name,whatsapp_phone_number_id,bot_enabled,created_at&order=created_at.desc');
+        const rows = await sbFetch('businesses?select=id,slug,name,whatsapp_phone_number_id,instagram_account_id,bot_enabled,created_at&order=created_at.desc');
         res.end(JSON.stringify(rows));
       } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
       return;
@@ -350,11 +442,13 @@ const server = http.createServer(async (req, res) => {
       req.on('data', c => body += c);
       req.on('end', async () => {
         try {
-          const { slug, name, whatsapp_phone_number_id, facts } = JSON.parse(body);
-          if (!slug || !name || !whatsapp_phone_number_id) throw new Error('slug, name and whatsapp_phone_number_id are required');
+          const { slug, name, whatsapp_phone_number_id, instagram_account_id, facts } = JSON.parse(body);
+          if (!slug || !name || (!whatsapp_phone_number_id && !instagram_account_id)) {
+            throw new Error('slug, name and at least one of whatsapp_phone_number_id / instagram_account_id are required');
+          }
           const created = await sbFetch('businesses', {
             method: 'POST',
-            body: { slug, name, whatsapp_phone_number_id, facts: facts || '' },
+            body: { slug, name, whatsapp_phone_number_id: whatsapp_phone_number_id || null, instagram_account_id: instagram_account_id || null, facts: facts || '' },
             prefer: 'return=representation'
           });
           res.end(JSON.stringify(created[0]));
