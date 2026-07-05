@@ -143,9 +143,15 @@
     .controls .lang { margin-left:auto; }
     .foot { display:none; }
   }
+
+  /* embedded (inside the landing iframe / full-screen overlay): drop the redundant title */
+  html.embedded, html.embedded body { height:100%; }  /* dvh is unreliable inside an iframe — pin to the frame */
+  html.embedded body { padding-top:14px; }
+  html.embedded .top { display:none; }
 </style>
 </head>
 <body>
+<script>if (window.self !== window.top) document.documentElement.className += ' embedded';</script>
 
 <div class="top">
   <h1>Ozzie <em>— Demo</em></h1>
