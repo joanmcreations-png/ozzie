@@ -20,10 +20,10 @@
     --serif:'Fraunces', Georgia, serif;
     --sans:'Inter', -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
-  html { scroll-behavior:smooth; }
+  html { scroll-behavior:smooth; overflow-x:hidden; }
   body {
     background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.6;
-    position:relative;
+    position:relative; overflow-x:hidden; width:100%;
   }
   body::before {
     content:''; position:fixed; top:-6%; left:-6%; width:112%; height:112%; pointer-events:none; z-index:1; opacity:.045; mix-blend-mode:overlay;
@@ -149,6 +149,9 @@
     .hero-visual { order:-1; max-width:340px; margin:0 auto; }
     .float-tag { display:none; }
     .compare { grid-template-columns:1fr; }
+    section { padding:64px 0; }
+    .demo-box { margin-top:28px; }
+    .demo-box iframe { height:90vh; height:90dvh; min-height:560px; border-radius:20px; }
   }
 
   /* ── animations ── */
