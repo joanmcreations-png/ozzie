@@ -41,7 +41,7 @@
   .btn {
     display:inline-flex; align-items:center; gap:8px; background:var(--green); color:#062112; font-weight:700;
     padding:14px 28px; border-radius:100px; font-size:15px; transition:transform .15s ease, box-shadow .15s ease;
-    box-shadow:0 1px 0 rgba(255,255,255,.15) inset;
+    box-shadow:0 1px 0 rgba(255,255,255,.15) inset; white-space:nowrap;
   }
   .btn:hover { transform:translateY(-2px); box-shadow:0 10px 34px rgba(62,207,126,.28), 0 1px 0 rgba(255,255,255,.15) inset; }
   .btn.ghost { background:transparent; color:var(--text); border:1px solid var(--line); box-shadow:none; }
@@ -81,8 +81,9 @@
   .chat-time b { color:var(--green); font-weight:600; }
 
   .stat-row { display:flex; justify-content:center; gap:40px; margin-top:52px; flex-wrap:wrap; }
+  .stat { display:flex; flex-direction:column; align-items:center; text-align:center; }
   .stat b { display:block; font-family:var(--serif); font-size:26px; font-weight:600; letter-spacing:-0.02em; }
-  .stat span { font-size:12px; color:var(--dim2); }
+  .stat span { font-size:12px; color:var(--dim2); max-width:150px; }
 
   /* ── sections ── */
   section { padding:96px 0; }
@@ -157,7 +158,8 @@
   /* faq */
   .faq { max-width:700px; margin:44px auto 0; }
   details { border-bottom:1px solid var(--line-soft); padding:20px 4px; }
-  summary { cursor:pointer; font-weight:600; font-size:16.5px; list-style:none; display:flex; justify-content:space-between; align-items:center; }
+  summary { cursor:pointer; font-weight:600; font-size:16.5px; list-style:none; display:flex; justify-content:space-between; align-items:center; min-height:44px; }
+  summary::-webkit-details-marker { display:none; }
   summary::after { content:'+'; color:var(--green); font-size:22px; font-weight:400; margin-left:16px; }
   details[open] summary::after { content:'–'; }
   details p { color:var(--dim); font-size:14.5px; margin-top:12px; max-width:620px; }
@@ -176,6 +178,11 @@
     .demo-box { margin-top:28px; }
     .demo-box iframe.demo-inline { display:none; }
     .demo-open { display:flex; }
+    .btn.small { padding:9px 15px; font-size:12.5px; }
+    .stat-row { gap:10px; margin-top:36px; }
+    .stat { flex:1 1 0; min-width:0; }
+    .stat b { font-size:22px; }
+    .stat span { font-size:10.5px; max-width:none; }
   }
 
   /* ── animations ── */
