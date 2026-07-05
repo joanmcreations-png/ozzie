@@ -41,6 +41,12 @@ const SB_URL          = process.env.SUPABASE_URL || '';
 const SB_SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const PANEL_TOKEN     = process.env.PANEL_TOKEN || 'ozzie-panel';
 
+// Google Calendar — per-business OAuth (each business connects their own calendar
+// from the panel; we store their refresh_token and check/create real events with it)
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const GOOGLE_REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI || `http://localhost:${process.env.PORT || 3210}/api/panel/google/callback`;
+
 function sbFetch(pathAndQuery, { method = 'GET', body, prefer } = {}) {
   return new Promise((resolve, reject) => {
     if (!SB_URL || !SB_SERVICE_KEY) return reject(new Error('Supabase not configured'));
@@ -68,13 +74,15 @@ function sbFetch(pathAndQuery, { method = 'GET', body, prefer } = {}) {
   });
 }
 
+const BUSINESS_FIELDS = 'id,bot_enabled,facts,name,timezone,google_refresh_token,google_calendar_id';
+
 async function getBusinessByPhoneId(phoneNumberId) {
-  const businesses = await sbFetch(`businesses?whatsapp_phone_number_id=eq.${encodeURIComponent(phoneNumberId)}&select=id,bot_enabled,facts,name`);
+  const businesses = await sbFetch(`businesses?whatsapp_phone_number_id=eq.${encodeURIComponent(phoneNumberId)}&select=${BUSINESS_FIELDS}`);
   return businesses && businesses[0];
 }
 
 async function getBusinessByInstagramId(igAccountId) {
-  const businesses = await sbFetch(`businesses?instagram_account_id=eq.${encodeURIComponent(igAccountId)}&select=id,bot_enabled,facts,name`);
+  const businesses = await sbFetch(`businesses?instagram_account_id=eq.${encodeURIComponent(igAccountId)}&select=${BUSINESS_FIELDS}`);
   return businesses && businesses[0];
 }
 
@@ -94,12 +102,133 @@ function logMessage(conversationId, role, content) {
   return sbFetch('messages', { method: 'POST', body: { conversation_id: conversationId, role, content } }).catch(e => console.error('log message error:', e.message));
 }
 
-function saveBooking(conversationId, businessId, service, whenText, customerName) {
+async function saveBooking(conversationId, businessId, service, whenText, customerName, startIso, endIso) {
+  let googleEventId = null;
+  if (startIso && endIso) {
+    try {
+      const [business] = await sbFetch(`businesses?id=eq.${businessId}&select=${BUSINESS_FIELDS}`);
+      if (business && business.google_refresh_token) {
+        googleEventId = await createCalendarEvent(business, `${service} — ${customerName}`, startIso, endIso);
+      }
+    } catch (e) { console.error('Google Calendar event creation error:', e.message); }
+  }
   return sbFetch('bookings', {
     method: 'POST',
-    body: { conversation_id: conversationId, business_id: businessId, service, when_text: whenText, customer_name: customerName }
+    body: {
+      conversation_id: conversationId, business_id: businessId, service, when_text: whenText, customer_name: customerName,
+      start_iso: startIso || null, end_iso: endIso || null, google_event_id: googleEventId
+    }
   }).catch(e => console.error('save booking error:', e.message));
 }
+
+// --- Google Calendar (per-business OAuth, real availability + event creation) ---
+
+function googleTokenRequest(params) {
+  return new Promise((resolve, reject) => {
+    const data = new URLSearchParams(params).toString();
+    const req = https.request({
+      hostname: 'oauth2.googleapis.com',
+      path: '/token',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(data) }
+    }, res => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(raw);
+          if (res.statusCode >= 200 && res.statusCode < 300) resolve(j);
+          else reject(new Error(j.error_description || j.error || 'Google token request failed'));
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+async function getGoogleAccessToken(business) {
+  if (!business.google_refresh_token) return null;
+  const j = await googleTokenRequest({
+    client_id: GOOGLE_CLIENT_ID,
+    client_secret: GOOGLE_CLIENT_SECRET,
+    refresh_token: business.google_refresh_token,
+    grant_type: 'refresh_token'
+  });
+  return j.access_token;
+}
+
+function googleApiRequest(accessToken, method, urlPath, body) {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const req = https.request({
+      hostname: 'www.googleapis.com',
+      path: urlPath,
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }, res => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        try {
+          const j = raw ? JSON.parse(raw) : {};
+          if (res.statusCode >= 200 && res.statusCode < 300) resolve(j);
+          else reject(new Error(j.error?.message || 'Google Calendar API error ' + res.statusCode));
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+// Returns { available: bool }. Fails open (treats as available) if the business
+// has no calendar connected yet, or if the Google API call itself errors out —
+// we never want a hiccup on our side to block a real booking.
+async function checkAvailability(business, startIso, endIso) {
+  if (!business.google_refresh_token) return { available: true };
+  try {
+    const accessToken = await getGoogleAccessToken(business);
+    const calId = business.google_calendar_id || 'primary';
+    const j = await googleApiRequest(accessToken, 'POST', '/calendar/v3/freeBusy', {
+      timeMin: startIso, timeMax: endIso, items: [{ id: calId }]
+    });
+    const busy = j.calendars?.[calId]?.busy || [];
+    return { available: busy.length === 0 };
+  } catch (e) {
+    console.error('checkAvailability error:', e.message);
+    return { available: true };
+  }
+}
+
+async function createCalendarEvent(business, summary, startIso, endIso) {
+  const accessToken = await getGoogleAccessToken(business);
+  const calId = business.google_calendar_id || 'primary';
+  const j = await googleApiRequest(accessToken, 'POST', `/calendar/v3/calendars/${encodeURIComponent(calId)}/events`, {
+    summary,
+    start: { dateTime: startIso },
+    end: { dateTime: endIso }
+  });
+  return j.id || null;
+}
+
+const AVAILABILITY_TOOL = {
+  name: 'check_availability',
+  description: 'Check whether the business calendar is free for an exact time range. You MUST call this before confirming any booking. If it comes back not available, apologize briefly and ask the customer for a different time instead of confirming.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      start_iso: { type: 'string', description: 'Proposed start time, ISO 8601 with UTC offset, e.g. 2026-07-06T17:00:00-07:00' },
+      end_iso: { type: 'string', description: 'Proposed end time, ISO 8601 with UTC offset (default to 30-45 min after start unless the service implies otherwise)' }
+    },
+    required: ['start_iso', 'end_iso']
+  }
+};
 
 const BIZ_FACTS = {
   barber: `Negocio: North Van Barbers (barbería en 123 Lonsdale Ave, North Vancouver).
@@ -114,10 +243,12 @@ Horario: lunes a viernes 8:00-17:00. Urgencias mismo día si es posible.
 Precios: limpieza desde $150, revisión + rayos X $120. Aceptan la mayoría de seguros.`
 };
 
-function systemPrompt(facts, lang) {
+function systemPrompt(facts, lang, nowText, timezone, hasCalendarTool = true) {
   return `Eres la persona que lleva los mensajes (WhatsApp/Instagram) de este negocio:
 
 ${facts}
+
+Ahora mismo es: ${nowText} (zona horaria ${timezone}). Usa esto para resolver "mañana", "el viernes", etc. a una fecha exacta.
 
 Cómo escribes:
 - REGLA DE IDIOMA (la más importante): responde SIEMPRE en el MISMO idioma en que te escribe el cliente en su último mensaje. Si te escribe en inglés, respondes en inglés. Si te escribe en español, en español. NUNCA cambies de idioma tú solo. Este negocio está en Vancouver (Canadá): POR DEFECTO todo es en INGLÉS. Si el mensaje NO tiene idioma claro (solo emoji, números, símbolos o un saludo ambiguo): responde en INGLÉS. Solo usa español si el cliente escribe claramente en español.
@@ -131,8 +262,9 @@ Qué haces:
 - Solo hablas de este negocio. Si preguntan otra cosa, redirige con amabilidad.
 - Si el cliente quiere reservar necesitas SOLO estos 3 datos: (1) servicio o nº de personas, (2) día y hora, (3) nombre. Pide UNA cosa por mensaje, y solo las que falten (si el cliente ya dio alguna, no la vuelvas a pedir).
 - NO pidas datos extra (ni dine-in/takeout, ni "qué viernes", ni teléfono, ni nada más). Si algo es ambiguo como "viernes", asume el próximo que viene, no preguntes.
-- EN CUANTO tengas esos 3 datos, CONFIRMA YA en el mismo mensaje (frase corta y cálida) y añade al FINAL esta línea exacta, sin más preguntas:
-BOOKING_CONFIRMED|<servicio o personas>|<día y hora>|<nombre>
+- EN CUANTO tengas esos 3 datos${hasCalendarTool ? ', calcula la hora exacta en ISO 8601 (con offset de ' + timezone + ') y llama a la tool check_availability ANTES de confirmar nada. Si dice que NO está disponible, dilo con naturalidad y pide otra hora (no confirmes, no emitas la línea de abajo). Si SÍ está disponible' : ''}, confirma YA en el mismo mensaje (frase corta y cálida) y añade al FINAL esta línea exacta, sin más preguntas:
+BOOKING_CONFIRMED|<servicio o personas>|<día y hora en texto natural>|<nombre>|<start_iso o vacío>|<end_iso o vacío>
+  · IDIOMA DE LA TARJETA: los campos <servicio o personas> y <día y hora en texto natural> DEBEN ir en el MISMO idioma en que escribe el cliente, aunque los datos del negocio de arriba estén en otro idioma. Si el cliente escribe en inglés, el servicio va en inglés (ej. "classic shave", NO "afeitado clásico"; "haircut + beard", NO "corte + barba"). Traduce el nombre del servicio al idioma del cliente.
 - REGLA ANTI-INVENCIÓN (crítica): SOLO puedes afirmar datos que estén escritos arriba (horario, dirección, precios listados). CUALQUIER otra cosa que no esté arriba —opciones veganas/sin gluten, parking, métodos de pago, descuentos, qué seguros aceptáis, promociones, servicios extra— NO la afirmes ni la niegues con detalles inventados. En su lugar di con naturalidad que se lo confirmas, VARIANDO la frase cada vez (nunca repitas la misma palabra por palabra): p.ej. "let me check that for you and get back in a sec", "not 100% sure — I'll confirm with the team and let you know", "good q! I'll double-check and text you back", etc. En español igual, variando. Es preferible decir "te lo confirmo" antes que inventar. Inventar un dato falso es el peor error posible.`;
 }
 
@@ -194,6 +326,42 @@ function sendInstagramMessage(igAccountId, recipientId, text) {
   });
 }
 
+// Runs the conversation turn against Claude, handling the check_availability
+// tool-use round-trip transparently. Returns { reply, booking } where booking
+// is null unless the model just confirmed one (already availability-checked).
+async function converseWithBooking(business, messages) {
+  const nowText = new Date().toLocaleString('en-US', { timeZone: business.timezone || 'America/Vancouver', dateStyle: 'full', timeStyle: 'short' });
+  const system = systemPrompt(business.facts, 'en', nowText, business.timezone || 'America/Vancouver');
+  let turnMessages = messages;
+
+  for (let i = 0; i < 4; i++) {
+    const r = await callAnthropic({
+      model: MODEL,
+      max_tokens: 400,
+      system,
+      tools: [AVAILABILITY_TOOL],
+      messages: turnMessages
+    });
+
+    const toolUse = (r.content || []).find(b => b.type === 'tool_use' && b.name === 'check_availability');
+    if (toolUse) {
+      const result = await checkAvailability(business, toolUse.input.start_iso, toolUse.input.end_iso);
+      turnMessages = turnMessages.concat([
+        { role: 'assistant', content: r.content },
+        { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: JSON.stringify(result) }] }
+      ]);
+      continue;
+    }
+
+    let reply = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const m = reply.match(/BOOKING_CONFIRMED\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|([^\n]*)/);
+    reply = reply.replace(/BOOKING_CONFIRMED\|[^\n]*/g, '').trim();
+    const booking = m ? { service: m[1].trim(), whenText: m[2].trim(), name: m[3].trim(), startIso: m[4].trim(), endIso: m[5].trim() } : null;
+    return { reply, booking };
+  }
+  throw new Error('check_availability tool loop did not resolve');
+}
+
 async function handleIncomingWhatsApp(phoneNumberId, from, text) {
   const historyKey = `${phoneNumberId}:${from}`;
   const history = waHistory.get(historyKey) || [];
@@ -217,20 +385,12 @@ async function handleIncomingWhatsApp(phoneNumberId, from, text) {
   if (botOff) return; // human has taken over this chat, or bot paused for this business
 
   try {
-    const r = await callAnthropic({
-      model: MODEL,
-      max_tokens: 400,
-      system: systemPrompt(business.facts, 'en'),
-      messages: clean
-    });
-    let reply = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-    const booking = reply.match(/BOOKING_CONFIRMED\|([^|]*)\|([^|]*)\|([^\n]*)/);
-    reply = reply.replace(/BOOKING_CONFIRMED\|[^\n]*/g, '').trim();
+    const { reply, booking } = await converseWithBooking(business, clean);
     history.push({ role: 'assistant', content: reply });
     waHistory.set(historyKey, history);
     if (conversation) {
       logMessage(conversation.id, 'assistant', reply);
-      if (booking) saveBooking(conversation.id, business.id, booking[1].trim(), booking[2].trim(), booking[3].trim());
+      if (booking) saveBooking(conversation.id, business.id, booking.service, booking.whenText, booking.name, booking.startIso, booking.endIso);
     }
     await sendWhatsAppMessage(phoneNumberId, from, reply);
   } catch (e) {
@@ -271,20 +431,12 @@ async function handleIncomingInstagram(igAccountId, senderId, text) {
   if (botOff) return; // human has taken over this chat, or bot paused for this business
 
   try {
-    const r = await callAnthropic({
-      model: MODEL,
-      max_tokens: 400,
-      system: systemPrompt(business.facts, 'en'),
-      messages: clean
-    });
-    let reply = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-    const booking = reply.match(/BOOKING_CONFIRMED\|([^|]*)\|([^|]*)\|([^\n]*)/);
-    reply = reply.replace(/BOOKING_CONFIRMED\|[^\n]*/g, '').trim();
+    const { reply, booking } = await converseWithBooking(business, clean);
     history.push({ role: 'assistant', content: reply });
     igHistory.set(historyKey, history);
     if (conversation) {
       logMessage(conversation.id, 'assistant', reply);
-      if (booking) saveBooking(conversation.id, business.id, booking[1].trim(), booking[2].trim(), booking[3].trim());
+      if (booking) saveBooking(conversation.id, business.id, booking.service, booking.whenText, booking.name, booking.startIso, booking.endIso);
     }
     await sendInstagramMessage(igAccountId, senderId, reply);
   } catch (e) {
@@ -386,10 +538,11 @@ const server = http.createServer(async (req, res) => {
         const clean = (messages || [])
           .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
           .slice(-14);
+        const demoNowText = new Date().toLocaleString('en-US', { timeZone: 'America/Vancouver', dateStyle: 'full', timeStyle: 'short' });
         const r = await callAnthropic({
           model: MODEL,
           max_tokens: 400,
-          system: systemPrompt(BIZ_FACTS[business] || BIZ_FACTS.barber, lang),
+          system: systemPrompt(BIZ_FACTS[business] || BIZ_FACTS.barber, lang, demoNowText, 'America/Vancouver', false),
           messages: clean
         });
         const text = (r.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
@@ -419,6 +572,34 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Google redirects the business owner's browser straight here after consent —
+    // it can't carry our panel token, so this route is exempt from the check below.
+    // state=business_id is the only thing tying the code back to a business.
+    if (pathname === '/api/panel/google/callback' && req.method === 'GET') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      const code = url.searchParams.get('code');
+      const businessId = url.searchParams.get('state');
+      try {
+        if (!code || !businessId) throw new Error('Missing code or state');
+        const tokens = await googleTokenRequest({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: GOOGLE_REDIRECT_URI,
+          grant_type: 'authorization_code'
+        });
+        if (!tokens.refresh_token) throw new Error('Google no devolvió refresh_token (revoca el acceso en myaccount.google.com/permissions y vuelve a intentarlo)');
+        await sbFetch(`businesses?id=eq.${encodeURIComponent(businessId)}`, {
+          method: 'PATCH',
+          body: { google_refresh_token: tokens.refresh_token, google_calendar_id: 'primary' }
+        });
+        res.end('<html><body style="font-family:sans-serif;padding:40px">Google Calendar conectado ✅ — ya puedes cerrar esta pestaña.</body></html>');
+      } catch (e) {
+        res.end(`<html><body style="font-family:sans-serif;padding:40px">Error conectando Google Calendar: ${e.message}</body></html>`);
+      }
+      return;
+    }
+
     if (url.searchParams.get('token') !== PANEL_TOKEN) {
       res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' })); return;
     }
@@ -442,8 +623,10 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/panel/businesses' && req.method === 'GET') {
       try {
-        const rows = await sbFetch('businesses?select=id,slug,name,whatsapp_phone_number_id,instagram_account_id,bot_enabled,created_at&order=created_at.desc');
-        res.end(JSON.stringify(rows));
+        const rows = await sbFetch('businesses?select=id,slug,name,whatsapp_phone_number_id,instagram_account_id,bot_enabled,created_at,google_refresh_token&order=created_at.desc');
+        // never send the raw refresh token to the browser — just whether it's connected
+        const safe = rows.map(({ google_refresh_token, ...rest }) => ({ ...rest, google_connected: !!google_refresh_token }));
+        res.end(JSON.stringify(safe));
       } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
       return;
     }
@@ -465,6 +648,24 @@ const server = http.createServer(async (req, res) => {
           res.end(JSON.stringify(created[0]));
         } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
       });
+      return;
+    }
+
+    // Starts the Google OAuth consent flow for a given business — opened in a new
+    // tab from the panel, not called via fetch (it's a browser redirect to Google).
+    if (pathname === '/api/panel/google/connect' && req.method === 'GET') {
+      const businessId = url.searchParams.get('business_id');
+      if (!businessId) { res.writeHead(400); res.end(JSON.stringify({ error: 'business_id required' })); return; }
+      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        response_type: 'code',
+        access_type: 'offline',
+        prompt: 'consent',
+        scope: 'https://www.googleapis.com/auth/calendar',
+        state: businessId
+      }).toString();
+      res.writeHead(302, { Location: authUrl }); res.end();
       return;
     }
 

@@ -208,7 +208,11 @@ async function openClients() {
   const rows = await r.json();
   document.getElementById('bizList').innerHTML = rows.map(b => `
     <div class="biz-row"><b>${escapeHtml(b.name)}</b> (${escapeHtml(b.slug)})<br>
-    <span class="num">${b.whatsapp_phone_number_id ? 'WhatsApp: ' + escapeHtml(b.whatsapp_phone_number_id) : ''}${b.whatsapp_phone_number_id && b.instagram_account_id ? ' · ' : ''}${b.instagram_account_id ? 'Instagram: ' + escapeHtml(b.instagram_account_id) : ''}</span></div>
+    <span class="num">${b.whatsapp_phone_number_id ? 'WhatsApp: ' + escapeHtml(b.whatsapp_phone_number_id) : ''}${b.whatsapp_phone_number_id && b.instagram_account_id ? ' · ' : ''}${b.instagram_account_id ? 'Instagram: ' + escapeHtml(b.instagram_account_id) : ''}</span><br>
+    ${b.google_connected
+      ? '<span class="num" style="color:var(--green);">📅 Google Calendar connected</span>'
+      : `<a class="num" style="color:var(--green);text-decoration:underline;cursor:pointer;" href="/api/panel/google/connect?business_id=${encodeURIComponent(b.id)}&token=${encodeURIComponent(TOKEN)}" target="_blank">📅 Connect Google Calendar</a>`
+    }</div>
   `).join('') || '<div class="empty">No clients yet</div>';
 }
 

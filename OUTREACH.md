@@ -2,6 +2,24 @@
 
 Regla de oro: cortos, imperfectos, sin diseño, sin logos, como si el dueño de un negocio pequeño le escribiera a otro. Nada de "I hope this email finds you well".
 
+---
+
+## ⭐ DM de Instagram — el que uso primero (listo para copiar-pegar)
+
+Nicho de dinero: med spas, clínicas dentales/estética, fisio, tattoo (ticket alto = les duele más perder un mensaje = pagan sin pestañear). Un solo link (hiozzie.com) hace demo + precio + pago.
+
+> Hey! Quick question — who answers your DMs when you're with a client or closed?
+>
+> I built something that replies to every message instantly and books people straight into your calendar — 24/7, even at midnight when someone's ready to book and you're not around.
+>
+> You can try it yourself right now, takes 20 seconds: hiozzie.com — chat with the demo like you're a customer 👀
+>
+> If you like it it's $129/mo, 14 days free, no setup, cancel anytime. Happy to connect it to your account whenever.
+
+Cuando respondan: firmar "Joan" a secas, responder como persona (nunca sonar a plantilla). El peso lo lleva la demo de la web, no tú.
+
+---
+
 ## Cómo sacar la lista (sin hablar con nadie)
 1. Google Maps → busca "barber north vancouver", "dental clinic kitsilano", "restaurant gastown", etc.
 2. De cada negocio: nombre, web, email (está en su web, sección contact) e Instagram.
